@@ -1,91 +1,196 @@
-import React, { Component, createRef, PropsWithChildren, RefObject } from 'react'
+import React, { Component, createRef, PropsWithChildren, RefObject, useContext, useEffect, useRef } from 'react'
 import { MMDLoader } from 'three/examples/jsm/loaders/MMDLoader';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls';
 import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import * as THREE from 'three'
 import { AmbientLight, PointLight, Vector2 } from 'three'
-import axios from 'axios';
+import { ViewHelper, EditorControls } from './ViewHelper';
 import './Viewport.css'
+import { UserSceneContext } from '../../App';
+import {
+  usePopupState,
+  bindTrigger,
+  bindMenu,
+  bindContextMenu,
+} from 'material-ui-popup-state/hooks'
+import { Menu, MenuItem } from '@mui/material';
 
+type Props = {}
 
-type Props = {
-  userScene: THREE.Object3D
-}
+export function Viewport({}: Props) {
+  const userScene = useContext(UserSceneContext)
+  const contextMenuState = usePopupState({ variant: 'popover', popupId: 'demoMenu' })
+  const webglOutput : RefObject<HTMLDivElement> = useRef(null)
+  const viewHelperRef : RefObject<HTMLDivElement> = useRef(null)
+  // const rendererRef = useRef(new THREE.WebGLRenderer())
+  const cameraRef = useRef(new THREE.PerspectiveCamera())
+  const camera = cameraRef.current
+  // const sceneRef = useRef(new THREE.Scene())
+  const transformControlsRef = useRef<TransformControls>(null)
+  const boxHelperRef = useRef(new THREE.BoxHelper( undefined ));
+  const boxHelper = boxHelperRef.current
 
-type State = {}
-
-export class Viewport extends Component<Props, State> {
-  webglOutput : RefObject<HTMLDivElement> = createRef()
-  renderer = new THREE.WebGLRenderer()
-  camera = new THREE.PerspectiveCamera()
-  scene = new THREE.Scene()
-
-  componentDidMount(){
-    if(this.webglOutput.current === null){
+  
+  useEffect(()=>{
+    const renderer = new THREE.WebGLRenderer()
+    
+    const scene = new THREE.Scene()
+    transformControlsRef.current = new TransformControls(camera, renderer.domElement)
+    const transformControls = transformControlsRef.current
+    
+    if(webglOutput.current === null){
       return
     }
     
-    while(this.webglOutput.current.firstChild !== null){
-      this.webglOutput.current.removeChild(this.webglOutput.current.firstChild)
+    while(webglOutput.current.firstChild !== null){
+      webglOutput.current.removeChild(webglOutput.current.firstChild)
     }
-    this.webglOutput.current.appendChild(this.renderer.domElement)
-    this.renderer.setSize(this.webglOutput.current.offsetWidth, this.webglOutput.current.offsetHeight)
-    this.renderer.outputEncoding = THREE.sRGBEncoding;
+    webglOutput.current.appendChild(renderer.domElement)
+    renderer.setSize(webglOutput.current.offsetWidth, webglOutput.current.offsetHeight)
+    renderer.outputEncoding = THREE.sRGBEncoding;
     
-    this.camera.aspect = this.webglOutput.current.offsetWidth / this.webglOutput.current.offsetHeight
-    this.camera.updateProjectionMatrix();
+    camera.aspect = webglOutput.current.offsetWidth / webglOutput.current.offsetHeight
+    camera.far = 20000
+    camera.updateProjectionMatrix();
 
-    this.camera.position.set( 20, 20, 20 );
-    this.camera.lookAt(this.scene.position)
-    this.scene.add(this.camera)
-    this.scene.add(this.props.userScene)
+    camera.position.set( 0, 0, 400 );
+    camera.lookAt(scene.position)
+    scene.add(camera) 
+    
+    console.log(userScene.root)   
+    scene.add(userScene.root)
 
-    const axesHelper = new THREE.AxesHelper( 50 );
-    this.scene.add( axesHelper );
+    const axesHelper = new THREE.AxesHelper( 5000 );
+    scene.add( axesHelper );
 
+    const viewHelper = new ViewHelper(camera, renderer.domElement)
+    viewHelper.controls = new EditorControls(camera, renderer.domElement)
+    viewHelperRef.current.addEventListener( 'pointerup', ( event ) => {
+			event.stopPropagation();
+			viewHelper.handleClick( event );
+		} );
+    
 
     const ambientLight = new AmbientLight(0xcccccc, 0.4)
-    this.scene.add(ambientLight)
+    scene.add(ambientLight)
 
     const cameraLight = new PointLight(0xffffff, 0.8)
-    this.camera.add(cameraLight)
+    camera.add(cameraLight)
 
     const texture = new THREE.TextureLoader().load("gradient.png")
     texture.sourceFile = "gradient.png"
-    // texture.needsUpdate = true;
+    texture.needsUpdate = true;
     
-    this.scene.background = texture 
+    scene.background = texture 
 
-    const controls = new OrbitControls( this.camera, this.renderer.domElement );
-    controls.update()
+    transformControls.addEventListener( 'dragging-changed', function ( event ) {
+      // orbitControls.enabled = !event.value;
+      viewHelper.controls.enabled = !event.value
+    } );
     
-    
-    this.renderer.setAnimationLoop(this.animate)
+    // scene.add(orbitControls)
+    scene.add(transformControls) 
 
-    window.addEventListener( 'resize', this.onWindowResize );
+    const clock = new THREE.Clock()
     
-  }
+    scene.add(boxHelper) 
+    renderer.setAnimationLoop(()=>{
+      const delta = clock.getDelta();
+      if ( viewHelper.animating === true ) {
+        viewHelper.update( delta ); 
+      }
+      boxHelper.update()
+      renderer.render(scene, camera)
+      renderer.autoClear = false
+      viewHelper.render( renderer )
+      renderer.autoClear = true
+    })
 
-  animate =  () => {
-    this.renderer.render( this.scene, this.camera );
-  }
-  
-  onWindowResize = () => {
-    if(this.webglOutput.current === null){
-      return
+    window.addEventListener( 'resize', ()=>{
+      if(webglOutput.current === null){
+        return
+      }
+      camera.aspect = webglOutput.current.offsetWidth / webglOutput.current.offsetHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize( webglOutput.current.offsetWidth , webglOutput.current.offsetHeight );
+      console.log(webglOutput.current.clientWidth, webglOutput.current.clientHeight)
+    } );
+  }, [camera, userScene.root])
+
+  useEffect(()=>{
+    const transformControls = transformControlsRef.current
+    const tmp = userScene.root.getObjectById(Number(userScene.selected[0]))
+    if(tmp !== undefined){
+      // console.log(userScene.selected[0])
+      transformControls.attach(tmp)
+      boxHelper.setFromObject(tmp)
+      boxHelper.visible = true
     }
-    this.camera.aspect = this.webglOutput.current.offsetWidth / this.webglOutput.current.offsetHeight;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize( this.webglOutput.current.offsetWidth , this.webglOutput.current.offsetHeight );
-    console.log(this.webglOutput.current.clientWidth, this.webglOutput.current.clientHeight)
+    else{
+      boxHelper.visible = false
+      transformControls.detach ()
+    }
+  }, [ userScene.root, userScene.selected])
+
+  let DownX = 0, DownY = 0, UpY = 0, UpX = 0
+  const handlePointerDown = (event:React.MouseEvent) => {
+    DownX = event.clientX
+    DownY = event.clientY
   }
-  render() {
-    return (
-      <div className='Viewport' ref={this.webglOutput}>
-      </div>
+  const handlePointerUp = (event:React.MouseEvent) => {
+    UpX = event.clientX
+    UpY = event.clientY
+    if(DownX === UpX && DownY === UpY){
+      const raycaster = new THREE.Raycaster()
+      const pointer = new THREE.Vector2()
+      pointer.x = ( event.clientX / webglOutput.current.offsetWidth ) * 2 - 1;
+      pointer.y = - ( event.clientY / webglOutput.current.offsetHeight ) * 2 + 1;
+      raycaster.setFromCamera( pointer, camera );
+      const objects:any = [];
+      userScene.root.traverseVisible((child) => {
+        objects.push( child );
+      })
+      const intersects = raycaster.intersectObjects( objects, false );
+      if(intersects.length === 0) userScene.setSelected([])
+      for ( let i = 0; i < intersects.length; i ++ ) {
+        userScene.setSelected([intersects[i].object.id.toString()])
+      }    
+    }
+  }
+  const handleViewHelperPointerUp = (event: React.MouseEvent) =>{
+    event.stopPropagation();
+
+  }
+  const handleViewHelperPoinertDown = (event: React.MouseEvent) =>{
+    event.stopPropagation();
+  }
+  return (
+    <>
+      <div 
+        className='Viewport' 
+        ref={webglOutput} 
+        onPointerUp={handlePointerDown}
+        onPointerDown={handlePointerUp}
+        {...bindContextMenu(contextMenuState)}
+      >
         
-     
-    )
-  }
+      </div>
+      <div 
+        ref={viewHelperRef}
+        onPointerUp={handleViewHelperPointerUp}
+        onPointerDown={handleViewHelperPoinertDown}
+        className='ViewHelper'
+      />
+      <Menu 
+        {...bindMenu(contextMenuState)}
+      >
+        <MenuItem onClick={contextMenuState.close}>Cake</MenuItem>
+        <MenuItem onClick={contextMenuState.close}>Death</MenuItem>
+      </Menu>
+    </>
+    
+  )
 }
+

@@ -1,0 +1,19 @@
+.Hierarchy{
+
+}
+
+.drag{
+    border: 2px solid transparent;
+}
+
+.drag.middle {
+	border: 2px dashed #999;
+}
+
+.drag.top {
+	border-top: 2px dashed #999;
+}
+
+.drag.bottom {
+	border-bottom: 2px dashed #999;
+}
