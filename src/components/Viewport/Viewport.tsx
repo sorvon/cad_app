@@ -9,19 +9,27 @@ import { AmbientLight, PointLight, Vector2 } from 'three'
 import { ViewHelper, EditorControls } from './ViewHelper';
 import './Viewport.css'
 import { UserSceneContext } from '../../App';
+import { Menu, MenuItem, Popper, ClickAwayListener, Paper, MenuList, PopperProps, Dialog, Button, DialogActions, DialogContent, DialogContentText, DialogTitle, TextField } from '@mui/material';
 import {
   usePopupState,
-  bindTrigger,
-  bindMenu,
   bindContextMenu,
+  bindPopover,
+  bindPopper,
+  anchorRef,
+  bindTrigger,
+  bindDialog,
 } from 'material-ui-popup-state/hooks'
-import { Menu, MenuItem } from '@mui/material';
+import { DetailView } from './DetailView';
 
 type Props = {}
 
 export function Viewport({}: Props) {
   const userScene = useContext(UserSceneContext)
-  const contextMenuState = usePopupState({ variant: 'popover', popupId: 'demoMenu' })
+  const [anchorEl, setAnchorEl] = React.useState<PopperProps['anchorEl']>(null);
+  const popupStateContextMenu = usePopupState({ variant: 'popper', popupId: 'demoMenu'})
+  const popupStateSetting = usePopupState({ variant: 'dialog', popupId: 'settingDialog' })
+  const popupStateDetail = usePopupState({ variant: 'dialog', popupId: 'detailDialog' })
+  
   const webglOutput : RefObject<HTMLDivElement> = useRef(null)
   const viewHelperRef : RefObject<HTMLDivElement> = useRef(null)
   // const rendererRef = useRef(new THREE.WebGLRenderer())
@@ -52,6 +60,7 @@ export function Viewport({}: Props) {
     renderer.outputEncoding = THREE.sRGBEncoding;
     
     camera.aspect = webglOutput.current.offsetWidth / webglOutput.current.offsetHeight
+    camera.near = 0.1
     camera.far = 20000
     camera.updateProjectionMatrix();
 
@@ -135,11 +144,11 @@ export function Viewport({}: Props) {
   }, [ userScene.root, userScene.selected])
 
   let DownX = 0, DownY = 0, UpY = 0, UpX = 0
-  const handlePointerDown = (event:React.MouseEvent) => {
+  const handlePointerDown = (event:React.PointerEvent) => {
     DownX = event.clientX
     DownY = event.clientY
   }
-  const handlePointerUp = (event:React.MouseEvent) => {
+  const handlePointerUp = (event:React.PointerEvent) => {
     UpX = event.clientX
     UpY = event.clientY
     if(DownX === UpX && DownY === UpY){
@@ -156,8 +165,13 @@ export function Viewport({}: Props) {
       if(intersects.length === 0) userScene.setSelected([])
       for ( let i = 0; i < intersects.length; i ++ ) {
         userScene.setSelected([intersects[i].object.id.toString()])
-      }    
+      }  
+      if(event.button === 2){
+        popupStateContextMenu.anchorEl.getBoundingClientRect = () => (new DOMRect(UpX, UpY, 0, 0))
+        popupStateContextMenu.open()
+      }
     }
+    
   }
   const handleViewHelperPointerUp = (event: React.MouseEvent) =>{
     event.stopPropagation();
@@ -166,14 +180,25 @@ export function Viewport({}: Props) {
   const handleViewHelperPoinertDown = (event: React.MouseEvent) =>{
     event.stopPropagation();
   }
+  const handleContextMenu = (event: React.MouseEvent) => {
+    event.preventDefault()
+  }
+  const menuSetting = () => {
+    popupStateContextMenu.close()
+  }
+  const menuDetail = () => {
+    popupStateContextMenu.close()
+  }
   return (
-    <>
+    <div 
+      onContextMenu={handleContextMenu}
+    >
       <div 
         className='Viewport' 
         ref={webglOutput} 
-        onPointerUp={handlePointerDown}
-        onPointerDown={handlePointerUp}
-        {...bindContextMenu(contextMenuState)}
+        onPointerUp={handlePointerUp}
+        onPointerDown={handlePointerDown}
+        // {...bindContextMenu(popupState)}
       >
         
       </div>
@@ -183,13 +208,47 @@ export function Viewport({}: Props) {
         onPointerDown={handleViewHelperPoinertDown}
         className='ViewHelper'
       />
-      <Menu 
-        {...bindMenu(contextMenuState)}
+      <Popper 
+        {...bindPopper(popupStateContextMenu)}
+        placement="bottom-start"
       >
-        <MenuItem onClick={contextMenuState.close}>Cake</MenuItem>
-        <MenuItem onClick={contextMenuState.close}>Death</MenuItem>
-      </Menu>
-    </>
+        <Paper>
+          <ClickAwayListener mouseEvent='onPointerUp' onClickAway={popupStateContextMenu.close}>
+            <MenuList>
+              <MenuItem {...bindTrigger(popupStateSetting)}>参数配置</MenuItem>
+              <MenuItem {...bindTrigger(popupStateDetail)}>填充详情</MenuItem>
+            </MenuList>
+            
+          </ClickAwayListener>
+        </Paper>
+      </Popper>
+
+      <Dialog {...bindDialog(popupStateSetting)}>
+        <DialogTitle>参数配置</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            参数配置（全局）
+          </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            id="name"
+            label="Email Address"
+            type="email"
+            fullWidth
+            variant="standard"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button >Cancel</Button>
+          <Button>Subscribe</Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog fullScreen className='DetailViewDialog' {...bindDialog(popupStateDetail)}>
+        <DetailView detailObject={userScene.root.getObjectById(Number(userScene.selected[0]))}></DetailView>
+      </Dialog>
+      <div ref={anchorRef(popupStateContextMenu)}/>
+    </div>
     
   )
 }

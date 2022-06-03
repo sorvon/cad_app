@@ -14,3 +14,9 @@
   height: 128px;
   width: 128px;
 }
+
+.DetailViewDialog{
+  width: 50%;
+  height: 50%;
+  margin: auto;
+}

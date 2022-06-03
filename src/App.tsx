@@ -5,6 +5,10 @@ import { Sidebar } from './components/Sidebar';
 import * as THREE from 'three'
 import { MMDLoader } from 'three/examples/jsm/loaders/MMDLoader';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
+import '@fontsource/roboto/300.css';
+import '@fontsource/roboto/400.css';
+import '@fontsource/roboto/500.css';
+import '@fontsource/roboto/700.css';
 
 export const UserSceneContext = createContext<UserScene>({
   root: new THREE.Object3D(),
