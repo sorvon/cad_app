@@ -1,47 +1,38 @@
-import React, { ChangeEventHandler, useContext, useRef } from 'react'
-import Button from '@mui/material/Button';
-import Menu from '@mui/material/Menu';
-import MenuItem from '@mui/material/MenuItem';
-import SettingsApplicationsIcon from '@mui/icons-material/SettingsApplications';
-import { IconButton, styled } from '@mui/material';
-import { MMDLoader } from 'three/examples/jsm/loaders/MMDLoader';
+import { useContext } from 'react'
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader' ;
 import { UserSceneContext } from '../../../../App';
 import * as THREE from 'three'
+import { SettingFilled } from '@ant-design/icons';
+import { Button, Dropdown, Tooltip, Menu, Upload, message } from 'antd';
+import type { UploadProps } from 'antd';
 
 type Props = {}
-const Input = styled('input')({
-  display: 'none',
-});
 
 function MainMenu({}: Props) {
   const userScene = useContext(UserSceneContext)
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-  const open = Boolean(anchorEl);
-  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
-    console.log(event.target.files)
-    const files = event.target.files
-    if(!files) return
-    const group = new THREE.Group();
-    group.name = 'group' + group.id
-    for (let i = 0; i < files.length; i++) {
-      const filename = files[i].name
-		  const extension = filename.split( '.' ).pop()!.toLowerCase();
-      const reader = new FileReader();
-      
+
+  let groupConunt = 0
+  let group = new THREE.Group()
+  group.name = 'group' + group.id
+  const importProps: UploadProps = {
+    name: 'file',
+    // action: 'https://www.mocky.io/v2/5cc8019d300000980a055e76',
+    // headers: {
+    //   authorization: 'authorization-text',
+    // },
+    multiple: true,
+    beforeUpload(file, fileList) {
+      const extension = file.name.split( '.' ).pop()!.toLowerCase();
+      console.log(extension)
+      const reader = new FileReader()
       switch (extension) {
         case 'stl':{
+          groupConunt ++
           if ( reader.readAsBinaryString !== undefined ) {
-            reader.readAsBinaryString( files[i] );
+            reader.readAsBinaryString( file );
           } else {
-            reader.readAsArrayBuffer( files[i] );
+            reader.readAsArrayBuffer( file );
           }
 
           reader.onload = (event) => {
@@ -49,74 +40,85 @@ function MainMenu({}: Props) {
             let geometry = new STLLoader().parse( event.target.result );
             const material = new THREE.MeshPhongMaterial({side:THREE.DoubleSide});
             const mesh = new THREE.Mesh( geometry, material );
-            mesh.name = filename;
+            mesh.name = file.name;
             group.add(mesh)
-            // userScene.setSelected([mesh.uuid])
           }
           break;
         }
         case 'obj':{
-          reader.readAsText(files[i])
+          groupConunt ++
+          reader.readAsText(file)
 
           reader.onload = (event) => {
             if(typeof event.target?.result === 'string'){
               let obj = new OBJLoader().parse( event.target.result);
-              obj.name = filename;
+              obj.name = file.name;
               group.add(obj)
-              // userScene.setSelected([obj.uuid])
             }
           }
           break;
         }
-        // case 'pmx':{
-        //   reader.onload = (event) => {
-        //     let obj = new MMDLoader().;
-        //     obj.name = filename;
-        //     userScene.root.add(obj)
-        //   }
-        //   break;
-        // }
-        default:
+        default:{
           break;
+        }
       }
-
-    }
-    setTimeout(()=>{
-      userScene.root.add(group)
-      userScene.setSelected([group.uuid])
-    }, 500)
-    
-    
-    setAnchorEl(null);
-  }
+      if(groupConunt === fileList.length){
+        setTimeout(()=>{
+          userScene.root.add(group)
+          userScene.setSelected([group.uuid])
+        }, 500)
+        // groupConunt = 0
+        // group = new THREE.Group()
+        // group.name = 'group' + group.id
+      }
+      return Upload.LIST_IGNORE
+    },
+    onChange(info) {
+      if (info.file.status !== 'uploading') {
+        console.log(info.file, info.fileList);
+      }
+      if (info.file.status === 'done') {
+        message.success(`${info.file.name} file uploaded successfully`);
+      } else if (info.file.status === 'error') {
+        message.error(`${info.file.name} file upload failed.`);
+      }
+    },
+  };
+  const menu = (
+    <Menu
+      // onClick={handleClose}
+      items={[
+        {
+          label: (<Upload  {...importProps}>Import</Upload>),
+          key: '1',
+          
+        },
+        {
+          label: 'test',
+          key: '2',
+        },
+        {
+          label: 'test2',
+          key: '3',
+          disabled: true,
+          children:[{
+            label: '4rd menu item',
+            key: '4',
+          }]
+        },
+      ]}
+    />
+  );
   return (
     <div>
-      <IconButton
-        id="basic-button"
-        aria-controls={open ? 'basic-menu' : undefined}
-        aria-haspopup="true"
-        aria-expanded={open ? 'true' : undefined}
-        onClick={handleClick}
-      >
-        <SettingsApplicationsIcon/>
-      </IconButton>
-      <Menu
-        id="basic-menu"
-        anchorEl={anchorEl}
-        open={open}
-        onClose={handleClose}
-        MenuListProps={{
-          'aria-labelledby': 'basic-button',
-        }}
-      >
-        <label>
-          <Input onChange={handleImport} accept="*" multiple type="file" />
-          <MenuItem>Import</MenuItem>
-        </label>
-        <MenuItem onClick={handleClose}>test</MenuItem>
-      </Menu>
+      <Dropdown overlay={menu} trigger={['click']}>
+        <Tooltip placement='right' title='菜单'>
+          <Button type="ghost" shape="circle" icon={<SettingFilled />} />
+        </Tooltip>
+      </Dropdown>
     </div>
   )
 }
 
 export {MainMenu}
+

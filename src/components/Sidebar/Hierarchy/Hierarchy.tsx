@@ -1,21 +1,9 @@
-import React, { SyntheticEvent, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import {Button, IconButton, styled, Typography} from '@mui/material';
-import { TreeView ,TreeViewProps } from '@mui/lab';
-import TreeItem, {
-  TreeItemProps,
-  useTreeItem,
-  TreeItemContentProps,
-} from '@mui/lab/TreeItem';
-import { DndProvider, useDrag, useDrop } from 'react-dnd'
+import { useCallback, useContext, useRef, useState } from 'react'
 import { UserSceneContext } from '../../../App';
-import { HTML5Backend } from 'react-dnd-html5-backend';
-import clsx from 'clsx';
 import { MoveObjectCommand } from '../../../command';
 import './Hierarchy.css'
 import { Tree } from 'antd';
-import type { DataNode, DirectoryTreeProps } from 'antd/lib/tree';
+import type { DirectoryTreeProps } from 'antd/lib/tree';
 
 export function Hierarchy() {
   const userScene = useContext(UserSceneContext)
