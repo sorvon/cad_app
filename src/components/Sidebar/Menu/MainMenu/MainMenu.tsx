@@ -28,34 +28,44 @@ function MainMenu({}: Props) {
   const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     console.log(event.target.files)
     const files = event.target.files
-    
+    if(!files) return
+    const group = new THREE.Group();
+    group.name = 'group' + group.id
     for (let i = 0; i < files.length; i++) {
       const filename = files[i].name
-		  const extension = filename.split( '.' ).pop().toLowerCase();
+		  const extension = filename.split( '.' ).pop()!.toLowerCase();
       const reader = new FileReader();
-      reader.readAsText(files[i])
+      
       switch (extension) {
         case 'stl':{
+          if ( reader.readAsBinaryString !== undefined ) {
+            reader.readAsBinaryString( files[i] );
+          } else {
+            reader.readAsArrayBuffer( files[i] );
+          }
+
           reader.onload = (event) => {
+            if(!event.target?.result) return
             let geometry = new STLLoader().parse( event.target.result );
             const material = new THREE.MeshPhongMaterial({side:THREE.DoubleSide});
             const mesh = new THREE.Mesh( geometry, material );
             mesh.name = filename;
-            userScene.root.add(mesh)
-            userScene.setSelected(mesh.id.toString())
+            group.add(mesh)
+            // userScene.setSelected([mesh.uuid])
           }
           break;
         }
         case 'obj':{
+          reader.readAsText(files[i])
+
           reader.onload = (event) => {
-            if(typeof event.target.result === 'string'){
+            if(typeof event.target?.result === 'string'){
               let obj = new OBJLoader().parse( event.target.result);
               obj.name = filename;
-              userScene.root.add(obj)
-              userScene.setSelected(obj.id.toString())
+              group.add(obj)
+              // userScene.setSelected([obj.uuid])
             }
           }
-          console.log("obj")
           break;
         }
         // case 'pmx':{
@@ -69,8 +79,14 @@ function MainMenu({}: Props) {
         default:
           break;
       }
+
     }
-    console.log(event.target.files)
+    setTimeout(()=>{
+      userScene.root.add(group)
+      userScene.setSelected([group.uuid])
+    }, 500)
+    
+    
     setAnchorEl(null);
   }
   return (

@@ -1,16 +1,17 @@
 .Sidebar{
-    position: absolute;
+    position: fixed;
     left: 0px;
     height: 100vh;
-    overflow-x: scroll;
+
 }
 .MainMenu{
-    position: fixed;
     text-align: left;
 }
 .RootTree{
+    position: absolute;
+    top: 40px;
+    bottom: 0px;
     text-align: left;
-    margin-top: 40px;
     background: transparent;
 }
 

@@ -6,8 +6,6 @@ import { Hierarchy } from './Hierarchy/Hierarchy';
 import { MainMenu } from './Menu/';
 
 
-
-
 type Props = {}
 const Input = styled('input')({
   display: 'none',
@@ -18,7 +16,7 @@ export function Sidebar({}: Props) {
 
   const handleClick = (event:React.MouseEvent) => {
     event.stopPropagation()
-  }
+  } 
   return (
   <div className='Sidebar' onClick={handleClick}>
     <div className="MainMenu" >

@@ -5,7 +5,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import './DetailView.css'
 
 type Props = {
-  detailObject: THREE.Object3D
+  detailObject: THREE.Object3D | undefined
 }
 
 export function DetailView({detailObject}: Props) {

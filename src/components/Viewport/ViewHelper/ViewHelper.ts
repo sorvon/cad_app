@@ -8,7 +8,7 @@ class ViewHelper extends THREE.Object3D {
 	render: (renderer: any) => void;
 	handleClick: (event: MouseEvent) => boolean;
 	update: (delta: number) => void;
-	isViewHelper: boolean;
+	isViewHelper: boolean | undefined;
 
 	constructor( editorCamera: THREE.PerspectiveCamera, dom: HTMLCanvasElement ) {
 
@@ -271,6 +271,7 @@ class ViewHelper extends THREE.Object3D {
 			canvas.height = 64;
 
 			const context = canvas.getContext( '2d' );
+			if(!context) return
 			context.beginPath();
 			context.arc( 32, 32, 16, 0, 2 * Math.PI );
 			context.closePath();

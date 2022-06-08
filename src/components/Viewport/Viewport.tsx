@@ -36,19 +36,19 @@ export function Viewport({}: Props) {
   const cameraRef = useRef(new THREE.PerspectiveCamera())
   const camera = cameraRef.current
   // const sceneRef = useRef(new THREE.Scene())
-  const transformControlsRef = useRef<TransformControls>(null)
-  const boxHelperRef = useRef(new THREE.BoxHelper( undefined ));
+  const transformControlsRef = useRef<TransformControls|null>(null)
+  const boxHelperRef = useRef(new THREE.BoxHelper( new THREE.Mesh( new THREE.SphereGeometry(), new THREE.MeshBasicMaterial( { color: 0x00ff00 } ) ) ));
   const boxHelper = boxHelperRef.current
 
   
   useEffect(()=>{
-    const renderer = new THREE.WebGLRenderer()
+    const renderer = new THREE.WebGLRenderer({powerPreference:'high-performance'})
     
     const scene = new THREE.Scene()
     transformControlsRef.current = new TransformControls(camera, renderer.domElement)
     const transformControls = transformControlsRef.current
     
-    if(webglOutput.current === null){
+    if(webglOutput.current === null || viewHelperRef.current === null){
       return
     }
     
@@ -103,18 +103,24 @@ export function Viewport({}: Props) {
     scene.add(transformControls) 
 
     const clock = new THREE.Clock()
-    
+    const FPS = 60
+    const frametime = 1 / FPS
+    let delta = 0;
     scene.add(boxHelper) 
     renderer.setAnimationLoop(()=>{
-      const delta = clock.getDelta();
-      if ( viewHelper.animating === true ) {
-        viewHelper.update( delta ); 
+      delta += clock.getDelta();
+      if(delta > frametime){
+        if ( viewHelper.animating === true ) {
+          viewHelper.update( delta ); 
+        }
+        boxHelper.update()
+        renderer.render(scene, camera)
+        renderer.autoClear = false
+        viewHelper.render( renderer )
+        renderer.autoClear = true
+        delta = delta % frametime
       }
-      boxHelper.update()
-      renderer.render(scene, camera)
-      renderer.autoClear = false
-      viewHelper.render( renderer )
-      renderer.autoClear = true
+      
     })
 
     window.addEventListener( 'resize', ()=>{
@@ -130,18 +136,18 @@ export function Viewport({}: Props) {
 
   useEffect(()=>{
     const transformControls = transformControlsRef.current
-    const tmp = userScene.root.getObjectById(Number(userScene.selected[0]))
+    const tmp = userScene.selectedObject
     if(tmp !== undefined){
       // console.log(userScene.selected[0])
-      transformControls.attach(tmp)
+      transformControls?.attach(tmp)
       boxHelper.setFromObject(tmp)
       boxHelper.visible = true
     }
     else{
       boxHelper.visible = false
-      transformControls.detach ()
+      transformControls?.detach ()
     }
-  }, [ userScene.root, userScene.selected])
+  }, [boxHelper, userScene.root, userScene.selectedObject])
 
   let DownX = 0, DownY = 0, UpY = 0, UpX = 0
   const handlePointerDown = (event:React.PointerEvent) => {
@@ -152,6 +158,8 @@ export function Viewport({}: Props) {
     UpX = event.clientX
     UpY = event.clientY
     if(DownX === UpX && DownY === UpY){
+      if(webglOutput.current === null) return
+
       const raycaster = new THREE.Raycaster()
       const pointer = new THREE.Vector2()
       pointer.x = ( event.clientX / webglOutput.current.offsetWidth ) * 2 - 1;
@@ -164,10 +172,12 @@ export function Viewport({}: Props) {
       const intersects = raycaster.intersectObjects( objects, false );
       if(intersects.length === 0) userScene.setSelected([])
       for ( let i = 0; i < intersects.length; i ++ ) {
-        userScene.setSelected([intersects[i].object.id.toString()])
+        console.log([intersects[i].object.id.toString()])
+        userScene.setSelected([intersects[i].object.uuid])
+        userScene.scrollToObject(intersects[i].object)
       }  
       if(event.button === 2){
-        popupStateContextMenu.anchorEl.getBoundingClientRect = () => (new DOMRect(UpX, UpY, 0, 0))
+        popupStateContextMenu.anchorEl!.getBoundingClientRect = () => (new DOMRect(UpX, UpY, 0, 0))
         popupStateContextMenu.open()
       }
     }
@@ -245,7 +255,7 @@ export function Viewport({}: Props) {
         </DialogActions>
       </Dialog>
       <Dialog fullScreen className='DetailViewDialog' {...bindDialog(popupStateDetail)}>
-        <DetailView detailObject={userScene.root.getObjectById(Number(userScene.selected[0]))}></DetailView>
+        <DetailView detailObject={userScene.selectedObject}></DetailView>
       </Dialog>
       <div ref={anchorRef(popupStateContextMenu)}/>
     </div>
