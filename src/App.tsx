@@ -45,9 +45,11 @@ export default function App() {
     // )
     
   }, [userScene.root])
-
+  const handleContextMenu = (event: React.MouseEvent) => {
+    event.preventDefault()
+  }
   return (
-    <div className="App" >
+    <div className="App" onContextMenuCapture={handleContextMenu} >
       <UserSceneContext.Provider value={userScene}>
         <Viewport />
         <Sidebar />

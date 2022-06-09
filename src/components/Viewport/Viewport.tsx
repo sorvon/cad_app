@@ -1,34 +1,21 @@
-import React, { Component, createRef, PropsWithChildren, RefObject, useContext, useEffect, useRef } from 'react'
-import { MMDLoader } from 'three/examples/jsm/loaders/MMDLoader';
-import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import React, { RefObject, useContext, useEffect, useRef, useState } from 'react'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls';
-import { Sky } from 'three/examples/jsm/objects/Sky.js';
 import * as THREE from 'three'
-import { AmbientLight, PointLight, Vector2 } from 'three'
+import { AmbientLight, PointLight } from 'three'
 import { ViewHelper, EditorControls } from './ViewHelper';
 import './Viewport.css'
 import { UserSceneContext } from '../../App';
-import { Menu, MenuItem, Popper, ClickAwayListener, Paper, MenuList, PopperProps, Dialog, Button, DialogActions, DialogContent, DialogContentText, DialogTitle, TextField } from '@mui/material';
-import {
-  usePopupState,
-  bindContextMenu,
-  bindPopover,
-  bindPopper,
-  anchorRef,
-  bindTrigger,
-  bindDialog,
-} from 'material-ui-popup-state/hooks'
 import { DetailView } from './DetailView';
+import { Dropdown, Menu, Modal, Input} from 'antd';
+import { MenuClickEventHandler } from 'rc-menu/lib/interface';
 
 type Props = {}
 
 export function Viewport({}: Props) {
   const userScene = useContext(UserSceneContext)
-  const [anchorEl, setAnchorEl] = React.useState<PopperProps['anchorEl']>(null);
-  const popupStateContextMenu = usePopupState({ variant: 'popper', popupId: 'demoMenu'})
-  const popupStateSetting = usePopupState({ variant: 'dialog', popupId: 'settingDialog' })
-  const popupStateDetail = usePopupState({ variant: 'dialog', popupId: 'detailDialog' })
+  const [modalSetting, setModalSetting] = useState(false)
+  const [modalDetail, setModalDetail] = useState(false)
+  
   
   const webglOutput : RefObject<HTMLDivElement> = useRef(null)
   const viewHelperRef : RefObject<HTMLDivElement> = useRef(null)
@@ -150,6 +137,7 @@ export function Viewport({}: Props) {
   }, [boxHelper, userScene.root, userScene.selectedObject])
 
   let DownX = 0, DownY = 0, UpY = 0, UpX = 0
+  const isMovedRef = useRef(true)
   const handlePointerDown = (event:React.PointerEvent) => {
     DownX = event.clientX
     DownY = event.clientY
@@ -157,9 +145,9 @@ export function Viewport({}: Props) {
   const handlePointerUp = (event:React.PointerEvent) => {
     UpX = event.clientX
     UpY = event.clientY
-    if(DownX === UpX && DownY === UpY){
+    isMovedRef.current = DownX !== UpX || DownY !== UpY
+    if(!isMovedRef.current){
       if(webglOutput.current === null) return
-
       const raycaster = new THREE.Raycaster()
       const pointer = new THREE.Vector2()
       pointer.x = ( event.clientX / webglOutput.current.offsetWidth ) * 2 - 1;
@@ -176,88 +164,81 @@ export function Viewport({}: Props) {
         userScene.setSelected([intersects[i].object.uuid])
         userScene.scrollToObject(intersects[i].object)
       }  
-      if(event.button === 2){
-        popupStateContextMenu.anchorEl!.getBoundingClientRect = () => (new DOMRect(UpX, UpY, 0, 0))
-        popupStateContextMenu.open()
-      }
     }
-    
   }
-  const handleViewHelperPointerUp = (event: React.MouseEvent) =>{
-    event.stopPropagation();
-
-  }
-  const handleViewHelperPoinertDown = (event: React.MouseEvent) =>{
-    event.stopPropagation();
-  }
+  
   const handleContextMenu = (event: React.MouseEvent) => {
-    event.preventDefault()
+    if(isMovedRef.current){
+      event.stopPropagation()
+    }
   }
-  const menuSetting = () => {
-    popupStateContextMenu.close()
+  const handleMenu : MenuClickEventHandler = info =>{
+    switch (info.key) {
+      case '1':{
+        setModalSetting(true)
+        break;
+      }
+      case '2':{
+        setModalDetail(true)
+        break;
+      }
+      default:{
+        break;
+      } 
+    }
   }
-  const menuDetail = () => {
-    popupStateContextMenu.close()
-  }
+  const menu = (
+    <Menu
+      onClick={handleMenu}
+      items={[
+        {
+          label: '参数配置',
+          key: '1',
+        },
+        {
+          label: '填充详情',
+          key: '2',
+        },
+      ]}
+    />
+  );
   return (
-    <div 
-      onContextMenu={handleContextMenu}
-    >
-      <div 
-        className='Viewport' 
-        ref={webglOutput} 
-        onPointerUp={handlePointerUp}
-        onPointerDown={handlePointerDown}
-        // {...bindContextMenu(popupState)}
-      >
-        
-      </div>
+    <div onContextMenuCapture={handleContextMenu} >
+      <Dropdown overlay={menu}  trigger={['contextMenu']}>
+        <div 
+          className='Viewport' 
+          ref={webglOutput} 
+          onPointerUp={handlePointerUp}
+          onPointerDown={handlePointerDown}
+        />
+      </Dropdown>
+      
       <div 
         ref={viewHelperRef}
-        onPointerUp={handleViewHelperPointerUp}
-        onPointerDown={handleViewHelperPoinertDown}
+        onPointerUp={e => e.stopPropagation()}
+        onPointerDown={e => e.stopPropagation()}
         className='ViewHelper'
       />
-      <Popper 
-        {...bindPopper(popupStateContextMenu)}
-        placement="bottom-start"
+      
+      <Modal
+        title='参数配置'
+        visible={modalSetting}
+        onCancel={() => setModalSetting(false)}
+        onOk={() => setModalSetting(false)}
       >
-        <Paper>
-          <ClickAwayListener mouseEvent='onPointerUp' onClickAway={popupStateContextMenu.close}>
-            <MenuList>
-              <MenuItem {...bindTrigger(popupStateSetting)}>参数配置</MenuItem>
-              <MenuItem {...bindTrigger(popupStateDetail)}>填充详情</MenuItem>
-            </MenuList>
-            
-          </ClickAwayListener>
-        </Paper>
-      </Popper>
-
-      <Dialog {...bindDialog(popupStateSetting)}>
-        <DialogTitle>参数配置</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            参数配置（全局）
-          </DialogContentText>
-          <TextField
-            autoFocus
-            margin="dense"
-            id="name"
-            label="Email Address"
-            type="email"
-            fullWidth
-            variant="standard"
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button >Cancel</Button>
-          <Button>Subscribe</Button>
-        </DialogActions>
-      </Dialog>
-      <Dialog fullScreen className='DetailViewDialog' {...bindDialog(popupStateDetail)}>
-        <DetailView detailObject={userScene.selectedObject}></DetailView>
-      </Dialog>
-      <div ref={anchorRef(popupStateContextMenu)}/>
+        <Input addonBefore='激光功率'/>
+      </Modal>
+      <Modal 
+        centered 
+        footer={null} 
+        visible={modalDetail} 
+        onCancel={() => setModalDetail(false)}
+        width='50vw'
+        destroyOnClose
+        bodyStyle={{height:'50vh', width:'50vw'}}
+      >
+        <DetailView detailObject={userScene.selectedObject}/>
+      </Modal>
     </div>
     
   )

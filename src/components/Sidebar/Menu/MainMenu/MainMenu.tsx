@@ -4,7 +4,7 @@ import { STLLoader } from 'three/examples/jsm/loaders/STLLoader' ;
 import { UserSceneContext } from '../../../../App';
 import * as THREE from 'three'
 import { SettingFilled } from '@ant-design/icons';
-import { Button, Dropdown, Tooltip, Menu, Upload, message } from 'antd';
+import { Button, Dropdown, Menu, Upload, message } from 'antd';
 import type { UploadProps } from 'antd';
 
 type Props = {}
@@ -112,9 +112,7 @@ function MainMenu({}: Props) {
   return (
     <div>
       <Dropdown overlay={menu} trigger={['click']}>
-        <Tooltip placement='right' title='菜单'>
           <Button type="ghost" shape="circle" icon={<SettingFilled />} />
-        </Tooltip>
       </Dropdown>
     </div>
   )

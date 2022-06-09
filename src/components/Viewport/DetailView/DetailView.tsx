@@ -1,15 +1,17 @@
+import { Empty } from 'antd';
 import React, { RefObject, useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { AmbientLight, PointLight } from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import './DetailView.css'
 
+
 type Props = {
   detailObject: THREE.Object3D | undefined
 }
 
 export function DetailView({detailObject}: Props) {
-  const webglOutput : RefObject<HTMLDivElement> = useRef(null)
+  const webglOutput = useRef<HTMLDivElement | null>(null)
   useEffect(()=>{
     if(!detailObject) return
     const renderer = new THREE.WebGLRenderer()
@@ -71,6 +73,8 @@ export function DetailView({detailObject}: Props) {
   }, [detailObject])
     
   return (
-    <div className='DetailView' ref={webglOutput} />
+    <div className='DetailView' ref={webglOutput} >
+      {!detailObject? <Empty imageStyle={{height:'auto', marginTop:'10vh'}}/> : undefined}
+    </div>
   )
 }
