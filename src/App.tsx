@@ -6,24 +6,29 @@ import * as THREE from 'three'
 import { MMDLoader } from 'three/examples/jsm/loaders/MMDLoader';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import 'antd/dist/antd.css';
-
 export const UserSceneContext = createContext<UserScene>({
   root: new THREE.Object3D(),
+  camera: new THREE.PerspectiveCamera(),
   selectedObject: undefined,
   selected: Array<string>(),
-  scrollToObject: ()=>{},
-  setSelected: () => {}
+  scrollToObject: () => {},
+  setSelected: () => {},
+  focusToObject: () => {},
 })
 export default function App() {
+  
   const [selected, setSelected] = useState(Array<string>());
   let selectedObject = useRef<THREE.Object3D | undefined>(undefined)
   const root = useRef(new THREE.Group())
+  const camera = useRef(new THREE.OrthographicCamera())
   
   const userScene: UserScene = {
     root : root.current,
+    camera : camera.current,
     selectedObject: selectedObject.current,
     selected,
-    scrollToObject: ()=>{},
+    scrollToObject: () => {},
+    focusToObject: () => {},
     setSelected : function(value : string[]){
       setSelected(value)
       selectedObject.current = this.root.getObjectByProperty('uuid', value[0])

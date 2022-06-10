@@ -1,8 +1,9 @@
-import React, { RefObject, useContext, useEffect, useRef, useState } from 'react'
+import React, { RefObject, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import * as THREE from 'three'
 import { AmbientLight, PointLight } from 'three'
-import { ViewHelper, EditorControls } from './ViewHelper';
+import { ViewHelper } from './ViewHelper';
 import './Viewport.css'
 import { UserSceneContext } from '../../App';
 import { DetailView } from './DetailView';
@@ -20,10 +21,11 @@ export function Viewport({}: Props) {
   const webglOutput : RefObject<HTMLDivElement> = useRef(null)
   const viewHelperRef : RefObject<HTMLDivElement> = useRef(null)
   // const rendererRef = useRef(new THREE.WebGLRenderer())
-  const cameraRef = useRef(new THREE.PerspectiveCamera())
-  const camera = cameraRef.current
+  // const cameraRef = useRef(new THREE.PerspectiveCamera())
+  const camera = userScene.camera
   // const sceneRef = useRef(new THREE.Scene())
   const transformControlsRef = useRef<TransformControls|null>(null)
+  const orbitControlsRef = useRef<OrbitControls|null>(null)
   const boxHelperRef = useRef(new THREE.BoxHelper( new THREE.Mesh( new THREE.SphereGeometry(), new THREE.MeshBasicMaterial( { color: 0x00ff00 } ) ) ));
   const boxHelper = boxHelperRef.current
 
@@ -46,7 +48,15 @@ export function Viewport({}: Props) {
     renderer.setSize(webglOutput.current.offsetWidth, webglOutput.current.offsetHeight)
     renderer.outputEncoding = THREE.sRGBEncoding;
     
-    camera.aspect = webglOutput.current.offsetWidth / webglOutput.current.offsetHeight
+    if(camera instanceof THREE.PerspectiveCamera){
+      camera.aspect = webglOutput.current.offsetWidth / webglOutput.current.offsetHeight
+    }
+    else if(camera instanceof THREE.OrthographicCamera){
+      camera.left = webglOutput.current.offsetWidth / -8
+      camera.right = webglOutput.current.offsetWidth / 8
+      camera.top = webglOutput.current.offsetHeight / 8
+      camera.bottom = webglOutput.current.offsetHeight / -8
+    }
     camera.near = 0.1
     camera.far = 20000
     camera.updateProjectionMatrix();
@@ -62,12 +72,13 @@ export function Viewport({}: Props) {
     scene.add( axesHelper );
 
     const viewHelper = new ViewHelper(camera, renderer.domElement)
-    viewHelper.controls = new EditorControls(camera, renderer.domElement)
+    orbitControlsRef.current = new OrbitControls(camera, renderer.domElement)
+    const orbitControls = orbitControlsRef.current
+    viewHelper.controls = orbitControls
     viewHelperRef.current.addEventListener( 'pointerup', ( event ) => {
 			event.stopPropagation();
 			viewHelper.handleClick( event );
 		} );
-    
 
     const ambientLight = new AmbientLight(0xcccccc, 0.4)
     scene.add(ambientLight)
@@ -82,7 +93,7 @@ export function Viewport({}: Props) {
     scene.background = texture 
 
     transformControls.addEventListener( 'dragging-changed', function ( event ) {
-      // orbitControls.enabled = !event.value;
+      orbitControls.enabled = !event.value;
       viewHelper.controls.enabled = !event.value
     } );
     
@@ -114,12 +125,20 @@ export function Viewport({}: Props) {
       if(webglOutput.current === null){
         return
       }
-      camera.aspect = webglOutput.current.offsetWidth / webglOutput.current.offsetHeight;
+      if(camera instanceof THREE.PerspectiveCamera){
+        camera.aspect = webglOutput.current.offsetWidth / webglOutput.current.offsetHeight;
+      }
+      else if(camera instanceof THREE.OrthographicCamera){
+        camera.left = webglOutput.current.offsetWidth / -8
+        camera.right = webglOutput.current.offsetWidth / 8
+        camera.top = webglOutput.current.offsetHeight / 8
+        camera.bottom = webglOutput.current.offsetHeight / -8
+      }
       camera.updateProjectionMatrix();
       renderer.setSize( webglOutput.current.offsetWidth , webglOutput.current.offsetHeight );
       console.log(webglOutput.current.clientWidth, webglOutput.current.clientHeight)
     } );
-  }, [camera, userScene.root])
+  }, [userScene.root])
 
   useEffect(()=>{
     const transformControls = transformControlsRef.current
@@ -136,6 +155,7 @@ export function Viewport({}: Props) {
     }
   }, [boxHelper, userScene.root, userScene.selectedObject])
 
+
   let DownX = 0, DownY = 0, UpY = 0, UpX = 0
   const isMovedRef = useRef(true)
   const handlePointerDown = (event:React.PointerEvent) => {
@@ -143,6 +163,7 @@ export function Viewport({}: Props) {
     DownY = event.clientY
   }
   const handlePointerUp = (event:React.PointerEvent) => {
+    console.log('up')
     UpX = event.clientX
     UpY = event.clientY
     isMovedRef.current = DownX !== UpX || DownY !== UpY
@@ -166,7 +187,6 @@ export function Viewport({}: Props) {
       }  
     }
   }
-  
   const handleContextMenu = (event: React.MouseEvent) => {
     if(isMovedRef.current){
       event.stopPropagation()
@@ -187,6 +207,36 @@ export function Viewport({}: Props) {
       } 
     }
   }
+  const handleDoubleClick = useCallback(() => {
+    userScene.focusToObject(userScene.selectedObject)
+  },[userScene])
+  userScene.focusToObject = useCallback((target: THREE.Object3D) => {
+    let distance;
+    let delta = new THREE.Vector3();
+    let box = new THREE.Box3();
+    let center = new THREE.Vector3()
+    let sphere = new THREE.Sphere();
+    box.setFromObject( target );
+
+    if ( box.isEmpty() === false ) {
+
+      box.getCenter( center );
+      distance = box.getBoundingSphere( sphere ).radius;
+
+    } else {
+
+      // Focusing on an Group, AmbientLight, etc
+
+      center.setFromMatrixPosition( target.matrixWorld );
+      distance = 0.1;
+
+    }
+    orbitControlsRef.current!.target = center
+    delta.set( 0, 0, 1 );
+    delta.applyQuaternion( camera.quaternion );
+    delta.multiplyScalar( distance * 4 );
+    camera.position.copy( center ).add( delta );
+  }, [])
   const menu = (
     <Menu
       onClick={handleMenu}
@@ -210,6 +260,8 @@ export function Viewport({}: Props) {
           ref={webglOutput} 
           onPointerUp={handlePointerUp}
           onPointerDown={handlePointerDown}
+          onDoubleClick={handleDoubleClick}
+          
         />
       </Dropdown>
       
@@ -233,9 +285,9 @@ export function Viewport({}: Props) {
         footer={null} 
         visible={modalDetail} 
         onCancel={() => setModalDetail(false)}
-        width='50vw'
+        width='80vw'
         destroyOnClose
-        bodyStyle={{height:'50vh', width:'50vw'}}
+        bodyStyle={{height:'80vh', width:'80vw'}}
       >
         <DetailView detailObject={userScene.selectedObject}/>
       </Modal>

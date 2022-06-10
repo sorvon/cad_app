@@ -10,7 +10,7 @@ class ViewHelper extends THREE.Object3D {
 	update: (delta: number) => void;
 	isViewHelper: boolean | undefined;
 
-	constructor( editorCamera: THREE.PerspectiveCamera, dom: HTMLCanvasElement ) {
+	constructor( editorCamera: THREE.Camera, dom: HTMLCanvasElement ) {
 
 		super();
 
@@ -168,7 +168,7 @@ class ViewHelper extends THREE.Object3D {
 				const intersection = intersects[ 0 ];
 				const object = intersection.object;
 
-				prepareAnimationData( object, this.controls.center );
+				prepareAnimationData( object, this.controls.target );
 
 				this.animating = true;
 
@@ -185,7 +185,7 @@ class ViewHelper extends THREE.Object3D {
 		this.update = function ( delta: number ) {
 
 			const step = delta * turnRate;
-			const focusPoint = this.controls.center;
+			const focusPoint = this.controls.target;
 
 			// animate position by doing a slerp and then scaling the position on the unit sphere
 

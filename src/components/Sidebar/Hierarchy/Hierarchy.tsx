@@ -76,7 +76,9 @@ export function Hierarchy() {
   }  
 
   const handleSelect :DirectoryTreeProps['onSelect']= (keys, info) => {
-    userScene.setSelected(keys)
+    if(keys.length !== 0){
+      userScene.setSelected(keys)
+    }
   }
 
   
