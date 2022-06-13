@@ -14,10 +14,13 @@ export const UserSceneContext = createContext<UserScene>({
   scrollToObject: () => {},
   setSelected: () => {},
   focusToObject: () => {},
+  url: '',
+  setUrl: () => {},
 })
 export default function App() {
   
   const [selected, setSelected] = useState(Array<string>());
+  const [url, setUrl] = useState('192.168.91.128:1080')
   let selectedObject = useRef<THREE.Object3D | undefined>(undefined)
   const root = useRef(new THREE.Group())
   const camera = useRef(new THREE.OrthographicCamera())
@@ -33,7 +36,9 @@ export default function App() {
       setSelected(value)
       selectedObject.current = this.root.getObjectByProperty('uuid', value[0])
       this.selectedObject = selectedObject.current
-    }
+    },
+    url,
+    setUrl,
   }
 
   useEffect(()=>{

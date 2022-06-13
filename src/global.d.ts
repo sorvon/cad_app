@@ -6,4 +6,6 @@ type UserScene = {
   setSelected: Function
   scrollToObject: Function
   focusToObject: Function
+  url: string
+  setUrl: Function
 }

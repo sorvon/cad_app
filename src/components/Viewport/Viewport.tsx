@@ -20,23 +20,16 @@ export function Viewport({}: Props) {
   
   const webglOutput : RefObject<HTMLDivElement> = useRef(null)
   const viewHelperRef : RefObject<HTMLDivElement> = useRef(null)
-  // const rendererRef = useRef(new THREE.WebGLRenderer())
+  const renderer = useRef(new THREE.WebGLRenderer({powerPreference:'high-performance'})).current
   // const cameraRef = useRef(new THREE.PerspectiveCamera())
   const camera = userScene.camera
-  // const sceneRef = useRef(new THREE.Scene())
-  const transformControlsRef = useRef<TransformControls|null>(null)
-  const orbitControlsRef = useRef<OrbitControls|null>(null)
-  const boxHelperRef = useRef(new THREE.BoxHelper( new THREE.Mesh( new THREE.SphereGeometry(), new THREE.MeshBasicMaterial( { color: 0x00ff00 } ) ) ));
-  const boxHelper = boxHelperRef.current
+  const scene = useRef(new THREE.Scene()).current
+  const transformControls = useRef(new TransformControls(camera, renderer.domElement)).current
+  const orbitControls = useRef(new OrbitControls(camera, renderer.domElement)).current
+  const boxHelper = useRef(new THREE.BoxHelper( new THREE.Mesh( new THREE.SphereGeometry(), new THREE.MeshBasicMaterial( { color: 0x00ff00 } ) ) )).current;
 
   
-  useEffect(()=>{
-    const renderer = new THREE.WebGLRenderer({powerPreference:'high-performance'})
-    
-    const scene = new THREE.Scene()
-    transformControlsRef.current = new TransformControls(camera, renderer.domElement)
-    const transformControls = transformControlsRef.current
-    
+  useEffect(()=>{       
     if(webglOutput.current === null || viewHelperRef.current === null){
       return
     }
@@ -72,8 +65,6 @@ export function Viewport({}: Props) {
     scene.add( axesHelper );
 
     const viewHelper = new ViewHelper(camera, renderer.domElement)
-    orbitControlsRef.current = new OrbitControls(camera, renderer.domElement)
-    const orbitControls = orbitControlsRef.current
     viewHelper.controls = orbitControls
     viewHelperRef.current.addEventListener( 'pointerup', ( event ) => {
 			event.stopPropagation();
@@ -141,11 +132,10 @@ export function Viewport({}: Props) {
   }, [userScene.root])
 
   useEffect(()=>{
-    const transformControls = transformControlsRef.current
     const tmp = userScene.selectedObject
     if(tmp !== undefined){
       // console.log(userScene.selected[0])
-      transformControls?.attach(tmp)
+      transformControls.attach(tmp)
       boxHelper.setFromObject(tmp)
       boxHelper.visible = true
     }
@@ -211,6 +201,7 @@ export function Viewport({}: Props) {
     userScene.focusToObject(userScene.selectedObject)
   },[userScene])
   userScene.focusToObject = useCallback((target: THREE.Object3D) => {
+    if(!target) return
     let distance;
     let delta = new THREE.Vector3();
     let box = new THREE.Box3();
@@ -219,7 +210,7 @@ export function Viewport({}: Props) {
     box.setFromObject( target );
 
     if ( box.isEmpty() === false ) {
-
+      
       box.getCenter( center );
       distance = box.getBoundingSphere( sphere ).radius;
 
@@ -231,7 +222,7 @@ export function Viewport({}: Props) {
       distance = 0.1;
 
     }
-    orbitControlsRef.current!.target = center
+    orbitControls.target = center
     delta.set( 0, 0, 1 );
     delta.applyQuaternion( camera.quaternion );
     delta.multiplyScalar( distance * 4 );
@@ -285,11 +276,12 @@ export function Viewport({}: Props) {
         footer={null} 
         visible={modalDetail} 
         onCancel={() => setModalDetail(false)}
+        onOk={() => setModalDetail(false)}
         width='80vw'
         destroyOnClose
         bodyStyle={{height:'80vh', width:'80vw'}}
       >
-        <DetailView detailObject={userScene.selectedObject}/>
+        <DetailView detailObject={userScene.selectedObject} />
       </Modal>
     </div>
     
