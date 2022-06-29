@@ -6,9 +6,11 @@ import * as THREE from 'three'
 import { MMDLoader } from 'three/examples/jsm/loaders/MMDLoader';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import 'antd/dist/antd.css';
+import axios from 'axios';
+import { message } from 'antd';
+axios.defaults.timeout = 300000
 export const UserSceneContext = createContext<UserScene>({
   root: new THREE.Object3D(),
-  camera: new THREE.PerspectiveCamera(),
   selectedObject: undefined,
   selected: Array<string>(),
   scrollToObject: () => {},
@@ -17,33 +19,52 @@ export const UserSceneContext = createContext<UserScene>({
   url: '',
   setUrl: () => {},
 })
+
+const root = new THREE.Group()
+
 export default function App() {
   
   const [selected, setSelected] = useState(Array<string>());
   const [url, setUrl] = useState('192.168.91.128:1080')
   let selectedObject = useRef<THREE.Object3D | undefined>(undefined)
-  const root = useRef(new THREE.Group())
-  const camera = useRef(new THREE.OrthographicCamera())
+  // const root = useRef(new THREE.Group())
+  // const camera = useRef(new THREE.OrthographicCamera())
   
   const userScene: UserScene = {
-    root : root.current,
-    camera : camera.current,
+    root : root,
     selectedObject: selectedObject.current,
     selected,
     scrollToObject: () => {},
     focusToObject: () => {},
     setSelected : function(value : string[]){
-      setSelected(value)
+      if(!! selectedObject.current){
+        selectedObject.current?.traverse((object)=>{
+          if(object instanceof THREE.Mesh){
+            object.material = new THREE.MeshPhongMaterial({side:THREE.DoubleSide})
+            object.material.color.set(0xffffff)
+          }
+        })
+      } 
       selectedObject.current = this.root.getObjectByProperty('uuid', value[0])
+      if(!! selectedObject.current){
+        selectedObject.current.traverse((object)=>{
+          if(object instanceof THREE.Mesh){
+            object.material = new THREE.MeshPhongMaterial({side:THREE.DoubleSide})
+            object.material.color.set(0xff0000)
+          }
+        })
+      } 
       this.selectedObject = selectedObject.current
+      
+      setSelected(value)
     },
     url,
     setUrl,
   }
 
   useEffect(()=>{
-    root.current.name = 'Scene'
-    setSelected([root.current.uuid])
+    root.name = 'Scene'
+    setSelected([root.uuid])
     // const mmdLoader = new MMDLoader();
     // mmdLoader.load("model/ayaka/神里绫华.pmx",
     //   (mmd) => {

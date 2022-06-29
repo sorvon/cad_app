@@ -2,11 +2,13 @@ import axios from "axios"
 import * as THREE from "three"
 
 class DXFLoader{
-  load = async () => {
-    const file = await axios.get('./Assets/filled/1(336).deltaY(0.01).dxf')
-    // file.data.spli
-    let data = file.data.split('\n') as string[]
+  load = async (path:string) => {
+    const file = await axios.get(path)
+
+    let data = file.data.split(/\r\n|\n/) as string[]
+    
     data = data.slice(data.indexOf('ENTITIES')+1, data.indexOf('ENDSEC')-1)
+
     if(data.length % 14 !== 0 ) {
       console.log('dxf error: 不是14的整数倍') 
       return

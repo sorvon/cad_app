@@ -3,6 +3,7 @@ import './Sidebar.css'
 import { UserSceneContext } from '../../App';
 import { Hierarchy } from './Hierarchy/Hierarchy';
 import { MainMenu } from './Menu/';
+import { message } from 'antd';
 
 
 type Props = {}

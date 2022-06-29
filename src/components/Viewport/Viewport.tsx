@@ -2,7 +2,7 @@ import React, { RefObject, useCallback, useContext, useEffect, useRef, useState 
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import * as THREE from 'three'
-import { AmbientLight, PointLight } from 'three'
+import { AmbientLight, Mesh, PointLight } from 'three'
 import { ViewHelper } from './ViewHelper';
 import './Viewport.css'
 import { UserSceneContext } from '../../App';
@@ -11,32 +11,31 @@ import { Dropdown, Menu, Modal, Input} from 'antd';
 import { MenuClickEventHandler } from 'rc-menu/lib/interface';
 
 type Props = {}
+const camera: THREE.OrthographicCamera|THREE.PerspectiveCamera 
+              = new THREE.OrthographicCamera()
+const renderer = new THREE.WebGLRenderer({powerPreference:'high-performance'})
+const scene = new THREE.Scene()
+const transformControls = new TransformControls(camera, renderer.domElement)
+const orbitControls = new OrbitControls(camera, renderer.domElement)
+const boxHelper = new THREE.BoxHelper( new THREE.Mesh( new THREE.SphereGeometry(), new THREE.MeshBasicMaterial( { color: 0x00ff00 } ) ) )
 
 export function Viewport({}: Props) {
   const userScene = useContext(UserSceneContext)
   const [modalSetting, setModalSetting] = useState(false)
   const [modalDetail, setModalDetail] = useState(false)
-  
-  
+
   const webglOutput : RefObject<HTMLDivElement> = useRef(null)
   const viewHelperRef : RefObject<HTMLDivElement> = useRef(null)
-  const renderer = useRef(new THREE.WebGLRenderer({powerPreference:'high-performance'})).current
-  // const cameraRef = useRef(new THREE.PerspectiveCamera())
-  const camera = userScene.camera
-  const scene = useRef(new THREE.Scene()).current
-  const transformControls = useRef(new TransformControls(camera, renderer.domElement)).current
-  const orbitControls = useRef(new OrbitControls(camera, renderer.domElement)).current
-  const boxHelper = useRef(new THREE.BoxHelper( new THREE.Mesh( new THREE.SphereGeometry(), new THREE.MeshBasicMaterial( { color: 0x00ff00 } ) ) )).current;
-
   
+  // init viewport
   useEffect(()=>{       
     if(webglOutput.current === null || viewHelperRef.current === null){
       return
     }
-    
     while(webglOutput.current.firstChild !== null){
       webglOutput.current.removeChild(webglOutput.current.firstChild)
     }
+
     webglOutput.current.appendChild(renderer.domElement)
     renderer.setSize(webglOutput.current.offsetWidth, webglOutput.current.offsetHeight)
     renderer.outputEncoding = THREE.sRGBEncoding;
@@ -45,10 +44,10 @@ export function Viewport({}: Props) {
       camera.aspect = webglOutput.current.offsetWidth / webglOutput.current.offsetHeight
     }
     else if(camera instanceof THREE.OrthographicCamera){
-      camera.left = webglOutput.current.offsetWidth / -8
-      camera.right = webglOutput.current.offsetWidth / 8
-      camera.top = webglOutput.current.offsetHeight / 8
-      camera.bottom = webglOutput.current.offsetHeight / -8
+      camera.left = webglOutput.current.offsetWidth / -2
+      camera.right = webglOutput.current.offsetWidth / 2
+      camera.top = webglOutput.current.offsetHeight / 2
+      camera.bottom = webglOutput.current.offsetHeight / -2
     }
     camera.near = 0.1
     camera.far = 20000
@@ -88,7 +87,6 @@ export function Viewport({}: Props) {
       viewHelper.controls.enabled = !event.value
     } );
     
-    // scene.add(orbitControls)
     scene.add(transformControls) 
 
     const clock = new THREE.Clock()
@@ -97,11 +95,21 @@ export function Viewport({}: Props) {
     let delta = 0;
     scene.add(boxHelper) 
     renderer.setAnimationLoop(()=>{
+      orbitControls.update()
       delta += clock.getDelta();
       if(delta > frametime){
         if ( viewHelper.animating === true ) {
           viewHelper.update( delta ); 
         }
+        if(!!userScene.selectedObject){
+          userScene.selectedObject.traverseVisible((child) => {
+            if(child instanceof THREE.Mesh){
+              child.material as THREE.Material
+            }
+          })
+        }
+
+
         boxHelper.update()
         renderer.render(scene, camera)
         renderer.autoClear = false
@@ -120,17 +128,18 @@ export function Viewport({}: Props) {
         camera.aspect = webglOutput.current.offsetWidth / webglOutput.current.offsetHeight;
       }
       else if(camera instanceof THREE.OrthographicCamera){
-        camera.left = webglOutput.current.offsetWidth / -8
-        camera.right = webglOutput.current.offsetWidth / 8
-        camera.top = webglOutput.current.offsetHeight / 8
-        camera.bottom = webglOutput.current.offsetHeight / -8
+        camera.left = webglOutput.current.offsetWidth / -2
+        camera.right = webglOutput.current.offsetWidth / 2
+        camera.top = webglOutput.current.offsetHeight / 2
+        camera.bottom = webglOutput.current.offsetHeight / -2
       }
       camera.updateProjectionMatrix();
       renderer.setSize( webglOutput.current.offsetWidth , webglOutput.current.offsetHeight );
-      console.log(webglOutput.current.clientWidth, webglOutput.current.clientHeight)
+      // console.log(webglOutput.current.clientWidth, webglOutput.current.clientHeight)
     } );
   }, [userScene.root])
 
+  // attach selected by boxHelper
   useEffect(()=>{
     const tmp = userScene.selectedObject
     if(tmp !== undefined){
@@ -143,7 +152,7 @@ export function Viewport({}: Props) {
       boxHelper.visible = false
       transformControls?.detach ()
     }
-  }, [boxHelper, userScene.root, userScene.selectedObject])
+  }, [userScene.root, userScene.selectedObject])
 
 
   let DownX = 0, DownY = 0, UpY = 0, UpX = 0
@@ -151,11 +160,13 @@ export function Viewport({}: Props) {
   const handlePointerDown = (event:React.PointerEvent) => {
     DownX = event.clientX
     DownY = event.clientY
+    event.stopPropagation()
   }
   const handlePointerUp = (event:React.PointerEvent) => {
     console.log('up')
     UpX = event.clientX
     UpY = event.clientY
+    event.stopPropagation()
     isMovedRef.current = DownX !== UpX || DownY !== UpY
     if(!isMovedRef.current){
       if(webglOutput.current === null) return
@@ -200,8 +211,10 @@ export function Viewport({}: Props) {
   const handleDoubleClick = useCallback(() => {
     userScene.focusToObject(userScene.selectedObject)
   },[userScene])
+  // focusToObject
   userScene.focusToObject = useCallback((target: THREE.Object3D) => {
     if(!target) return
+    console.log(target)
     let distance;
     let delta = new THREE.Vector3();
     let box = new THREE.Box3();
@@ -215,18 +228,23 @@ export function Viewport({}: Props) {
       distance = box.getBoundingSphere( sphere ).radius;
 
     } else {
-
       // Focusing on an Group, AmbientLight, etc
-
       center.setFromMatrixPosition( target.matrixWorld );
       distance = 0.1;
-
     }
     orbitControls.target = center
     delta.set( 0, 0, 1 );
     delta.applyQuaternion( camera.quaternion );
     delta.multiplyScalar( distance * 4 );
-    camera.position.copy( center ).add( delta );
+    if(camera instanceof THREE.PerspectiveCamera){
+      camera.position.copy( center ).add( delta );
+    }
+    else if(camera instanceof THREE.OrthographicCamera){
+      const maxlength = Math.max(webglOutput.current!.offsetHeight, webglOutput.current!.offsetWidth)
+      camera.zoom = (maxlength / distance) / 4
+      camera.updateProjectionMatrix()
+    }
+    
   }, [])
   const menu = (
     <Menu
@@ -271,7 +289,7 @@ export function Viewport({}: Props) {
       >
         <Input addonBefore='激光功率'/>
       </Modal>
-      <Modal 
+      <Modal  
         centered 
         footer={null} 
         visible={modalDetail} 

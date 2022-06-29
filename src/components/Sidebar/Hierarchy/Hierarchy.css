@@ -1,7 +1,10 @@
+::-webkit-scrollbar {display: inline;}
 .Hierarchy{
-	width: 200px;
 	height: 100%;
 	background: transparent;
+	width: 200px;
+}:focus{
+	outline: none;
 }
 
 .drag{

@@ -9,16 +9,22 @@ import {DXFLoader} from '../../Loaders'
 type Props = {
   detailObject: THREE.Object3D | undefined
 }
-
+const camera = new THREE.OrthographicCamera()
 export function DetailView(props: Props) {
   const webglOutput = useRef<HTMLDivElement | null>(null)
-  const camera = useRef(new THREE.OrthographicCamera()).current
 
-  const init =async () => {
+
+  const init = async () => {
     if(!props.detailObject) return
     const loader = new DXFLoader()
-    // const detailObject = props.detailObject.clone()
-    const detailObject = await loader.load()
+    const detailObjectSlt = props.detailObject
+    const parent = detailObjectSlt?.parent
+    const grandparent = parent?.parent 
+    if(! grandparent) return
+    const path = '/data/group/' + grandparent.name + '/' + parent.name + '/' + detailObjectSlt.name.slice(0, -3) + 'deltaY(0.01).dxf'
+    // const path = '/data/group/83579eefadcaaf99d16749d76cc7673d/0001/1.deltaY(0.01).dxf'
+    console.log(path) 
+    const detailObject = await loader.load(path)
     if(!detailObject) return
     const renderer = new THREE.WebGLRenderer()
     const scene = new THREE.Scene()
@@ -36,14 +42,14 @@ export function DetailView(props: Props) {
     renderer.outputEncoding = THREE.sRGBEncoding;
     
     // camera.aspect = webglOutput.current.offsetWidth / webglOutput.current.offsetHeight
-    camera.left = webglOutput.current.offsetWidth / -8
-    camera.right = webglOutput.current.offsetWidth / 8
-    camera.top = webglOutput.current.offsetHeight / 8
-    camera.bottom = webglOutput.current.offsetHeight / -8
-    // camera.near = 0.1
-    // camera.far = 20000
+    camera.left = webglOutput.current.offsetWidth / -2
+    camera.right = webglOutput.current.offsetWidth / 2
+    camera.top = webglOutput.current.offsetHeight / 2
+    camera.bottom = webglOutput.current.offsetHeight / -2
+    camera.near = 0.1
+    camera.far = 20000
     camera.updateProjectionMatrix();
-    
+    camera.position.set(0, 0, 400)
     scene.add(camera) 
 
     scene.add(detailObject)
@@ -75,10 +81,10 @@ export function DetailView(props: Props) {
         return
       }
       // camera.aspect = webglOutput.current.offsetWidth / webglOutput.current.offsetHeight;
-      camera.left = webglOutput.current.offsetWidth / -8
-      camera.right = webglOutput.current.offsetWidth / 8
-      camera.top = webglOutput.current.offsetHeight / 8
-      camera.bottom = webglOutput.current.offsetHeight / -8
+      camera.left = webglOutput.current.offsetWidth / -2
+      camera.right = webglOutput.current.offsetWidth / 2
+      camera.top = webglOutput.current.offsetHeight / 2
+      camera.bottom = webglOutput.current.offsetHeight / -2
       camera.updateProjectionMatrix();
       renderer.setSize( webglOutput.current.offsetWidth , webglOutput.current.offsetHeight );
       console.log(webglOutput.current.clientWidth, webglOutput.current.clientHeight)
@@ -114,7 +120,14 @@ export function DetailView(props: Props) {
     delta.set( 0, 0, 1 );
     delta.applyQuaternion( camera.quaternion );
     delta.multiplyScalar( distance * 2 );
-    camera.position.copy( center ).add( delta );
+    if(camera instanceof THREE.PerspectiveCamera){
+      camera.position.copy( center ).add( delta );
+    }
+    else if(camera instanceof THREE.OrthographicCamera){
+      const maxlength = Math.max(webglOutput.current!.offsetHeight, webglOutput.current!.offsetWidth)
+      camera.zoom = (maxlength / distance) / 4
+      camera.updateProjectionMatrix()
+    }
   }
   return (
     <div className='DetailView' ref={webglOutput}>

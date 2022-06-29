@@ -5,11 +5,11 @@ import { STLLoader } from 'three/examples/jsm/loaders/STLLoader' ;
 import { UserSceneContext } from '../../../../App';
 import * as THREE from 'three'
 import { SettingFilled } from '@ant-design/icons';
-import { Button, Dropdown, Menu, Upload, message, notification, Progress, Modal, Input } from 'antd';
+import { Button, Dropdown, Menu, Upload, message, notification, Progress, Modal, Input, Spin } from 'antd';
 import type { UploadProps } from 'antd';
 import * as tus from "tus-js-client";
 import { MenuClickEventHandler } from 'rc-menu/lib/interface';
-import axios from 'axios';
+import { batch8box, stp2stls } from '../../../backrequest';
 
 type Props = {}
 
@@ -68,7 +68,7 @@ function MainMenu({}: Props) {
           }
           break;
         }
-        case 'stp' || 'step':{
+        case 'stp': case 'step':{
           return true
         }
         default:{
@@ -102,6 +102,7 @@ function MainMenu({}: Props) {
             message: '失败',
             description: (<Progress percent={100} status='exception' />),
           });
+          console.log(error)
           return(error)
         },
         onProgress: function(bytesUploaded, bytesTotal) {
@@ -120,8 +121,11 @@ function MainMenu({}: Props) {
             message: '上传完成',
             description: (<Progress percent={100} />),
           });
-          stp2stps()
-          console.log("Download %s from %s", upload.file, upload.url)
+          const tusid = upload.url?.split('/').pop()
+          console.log('tusid', tusid)
+          if(!tusid) return
+          stp2stls(tusid, userScene)
+          console.log(upload)
         }
       })
       
@@ -129,14 +133,53 @@ function MainMenu({}: Props) {
       console.log(options)
     },
   };
-  const stp2stps = async () => {
-    const re = await axios.get('/stp/stp2stps/')
-    console.log(re)
-  }
-  const handleMenu : MenuClickEventHandler = info =>{
+  
+  const handleMenuClick : MenuClickEventHandler = async info =>{
     switch (info.key) {
       case '2':{
+        
         setNetConfig(true)
+        break;
+      }
+      case '4':{
+        stp2stls('debug', userScene)
+        break;
+      }
+      case '5':{
+        batch8box('debug', userScene)
+        break;
+      }
+      case '6':{
+        /* upload */
+        // const data = new Blob([JSON.stringify(userScene.root.getObjectByName('debug')?.toJSON())], {type:'application/json'})
+        // console.log(userScene.root.getObjectByName('debug')?.toJSON())
+        // let upload = new tus.Upload(data, {
+        //   endpoint: '/data/upload/',
+        //   retryDelays: [0, 3000, 5000, 10000, 20000],
+        //   metadata: {
+        //       filename: 'debug',
+        //       filetype: data.type
+        //   },
+        //   onError: function(error) {
+        //     return(error)
+        //   },
+        //   onProgress: function(bytesUploaded, bytesTotal) {
+
+        //   },
+        //   onSuccess: function() {
+        //     console.log(upload.url)
+        //   }
+        // })
+        // upload.start()
+
+        /* load */
+        const debugOld = userScene.root.getObjectByName('debug')
+        if(!! debugOld) debugOld.removeFromParent()
+        const loader = new THREE.ObjectLoader()
+        const object = await loader.loadAsync('/data/debug.json')
+        console.log(object)
+        userScene.root.add(object)
+        userScene.setSelected([object.uuid])
         break;
       }
       default:{
@@ -146,7 +189,7 @@ function MainMenu({}: Props) {
   }
   const menu = (
     <Menu
-      onClick={handleMenu}
+      onClick={handleMenuClick}
       items={[
         {
           label: (<Upload  {...importProps}>Import</Upload>),
@@ -157,13 +200,21 @@ function MainMenu({}: Props) {
           key: '2',
         },
         {
-          label: 'test2',
+          label: 'debug',
           key: '3',
-          disabled: true,
           children:[{
-            label: '4rd menu item',
+            label: 'Upload Success',
             key: '4',
-          }]
+          },
+          {
+            label: 'Batch8box',
+            key: '5',
+          },
+          {
+            label: 'load debug',
+            key: '6',
+          }
+        ]
         },
       ]}
     />
