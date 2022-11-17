@@ -2,7 +2,7 @@ import React, { useCallback, useContext, useRef, useState } from 'react'
 import { UserSceneContext } from '../../../App';
 import { MoveObjectCommand } from '../../../command';
 import './Hierarchy.css'
-import { Dropdown, Menu, message, notification, Spin, Tree } from 'antd';
+import { Dropdown, Input, InputNumber, Menu, message, Modal, notification, Select, Spin, Tree } from 'antd';
 import type { DirectoryTreeProps } from 'antd/lib/tree';
 import { MenuClickEventHandler } from 'rc-menu/lib/interface';
 import {batch8box, downloadDXF, fill8box} from '../../backrequest'
@@ -13,6 +13,18 @@ export function Hierarchy() {
   const hierarchyRef = useRef<HTMLDivElement>(null)
   const treeRef = useRef<any>(null);
   const [menuVisible, setMenuVisible] = useState(false)
+  const [menuDisable, setMenuDisable] = useState(false)
+  const [groupConfig, setGroupConfig] = useState(false)
+  const [groupX, setGroupX] = useState(40)
+  const [groupY, setGroupY] = useState(40)
+  const [groupZ, setGroupZ] = useState(10)
+  const [groupTaper, setGroupTaper] = useState(5)
+  const [fillConfig, setFillConfig] = useState(false)
+  const [fillInterval, setFillInterval] = useState(0.01)
+  const [fillType, setFillType] = useState("line")
+  const [offsetX, setOffsetX] = useState(0)
+  const [offsetY, setOffsetY] = useState(0)
+  const [offsetZ, setOffsetZ] = useState(0)
   const tusidRef = useRef('')
 
   userScene.scrollToObject = useCallback((object:THREE.Object3D)=>{
@@ -75,19 +87,19 @@ export function Hierarchy() {
     userScene.setSelected([(info.dragNode as unknown as THREE.Object3D).uuid])
   }
   const handleExpanded: DirectoryTreeProps['onExpand']= (keys, info) => {
-    console.log(keys)
     setExpanded(keys as string[])
   }  
 
   const handleSelect :DirectoryTreeProps['onSelect']= (keys, info) => {
     if(keys.length !== 0){
       userScene.setSelected(keys.filter(item => item!== userScene.root.uuid))
+      console.log(userScene.selectedObject)
     }
     // userScene.setSelected(keys)
   }
 
   const handleKeyDown = (event : React.KeyboardEvent) =>{
-    const parent = userScene.selectedObject!.parent
+    const parent = userScene.selectedObject?.parent
     if(! parent || ! userScene.selectedObject) return
     switch (event.key) {
       case 'ArrowUp':{
@@ -110,7 +122,19 @@ export function Hierarchy() {
   }
   const handleRightClick:DirectoryTreeProps['onRightClick'] = (event) => {
     const obj = event.node as unknown as THREE.Object3D
-    setMenuVisible(true)
+    if(obj.uuid === userScene.root.uuid || obj.children.length <= 0){
+      setMenuDisable(true)
+      return
+    }
+    if(obj.name.length === 4){
+      if(!isNaN(parseInt(obj.name[0])) && !isNaN(parseInt(obj.name[1]))
+        &&!isNaN(parseInt(obj.name[2])) && !isNaN(parseInt(obj.name[3]))){
+          setMenuDisable(true)
+          return
+      }
+    }
+
+    setMenuDisable(false)
     tusidRef.current = obj.name
     console.log(obj.name.length)
   }
@@ -119,7 +143,8 @@ export function Hierarchy() {
     switch (info.key) {
       case '1':{
         if(tusidRef.current.length !== 32 && tusidRef.current !== 'debug') return
-        batch8box(tusidRef.current, userScene) 
+        setGroupConfig(true)
+        // batch8box(tusidRef.current, userScene) 
         break;
       }
       case '2':{
@@ -132,11 +157,22 @@ export function Hierarchy() {
             return
           }          
         }
-        fill8box(tusidRef.current)
+        setFillConfig(true)
+        // fill8box(tusidRef.current)
         break;
       }
       case '3':{
         downloadDXF(tusidRef.current)
+        break;
+      }
+      case '4':{
+        const export_obj = userScene.root.getObjectByName(tusidRef.current)
+        console.log( new Blob([JSON.stringify(export_obj?.toJSON())], {type:'application/json'}))
+        const data =  new Blob([JSON.stringify(export_obj?.toJSON())], {type:'application/json'})
+        Modal.info({
+          title: "导出json",
+          content: (<a href={URL.createObjectURL(data)} download={tusidRef.current+'.json'}>点击下载</a>),
+        })
         break;
       }
       default:{
@@ -150,16 +186,24 @@ export function Hierarchy() {
       onClick={handleMenuClick}
       items={[
         {
+          label: '导出json',
+          key : '4',
+          disabled : menuDisable,
+        },
+        {
           label: '分组',
           key: '1',
+          disabled : menuDisable,
         },
         {
           label: '填充',
           key: '2',
+          disabled : menuDisable,
         },
         {
           label: '下载',
           key: '3',
+          disabled : menuDisable,
         },
       ]}
     />
@@ -193,6 +237,93 @@ export function Hierarchy() {
           onRightClick={handleRightClick}
         />
       </Dropdown>
+      <Modal 
+        title='分组参数'
+        visible={groupConfig} 
+        onCancel={() => setGroupConfig(false)}
+        onOk={() => {
+          batch8box(tusidRef.current, userScene, {x: groupX, y: groupY, z:groupZ})
+          setGroupConfig(false)
+        }}
+      >
+        <InputNumber 
+          addonBefore='扫场X' 
+          addonAfter='mm'
+          value={groupX}
+          onChange={(value) => {setGroupX(value)}}
+        />
+        <InputNumber 
+          addonBefore='扫场Y' 
+          addonAfter='mm'
+          value={groupY}
+          onChange={(value) => {setGroupY(value)}}
+        />
+        <InputNumber 
+          addonBefore='扫场Z' 
+          addonAfter='mm'
+          value={groupZ}
+          onChange={(value) => {setGroupZ(value)}}
+        />
+        {/* <InputNumber 
+          addonBefore='倾角  :' 
+          addonAfter='°'
+          value={groupTaper}
+          onChange={(value) => {setGroupTaper(value)}}
+        /> */}
+      </Modal>
+      <Modal 
+        title='填充参数'
+        visible={fillConfig} 
+        onCancel={() => setFillConfig(false)}
+        onOk={() => {
+          fill8box(tusidRef.current, userScene, {fillType, fillInterval, offsetX, offsetY, offsetZ})
+          setFillConfig(false)
+        }}
+      >
+        <Select value={fillType} onChange={setFillType} style={{ width: 120 }}
+          disabled={true}
+          options ={[
+            {
+              value: 'line',
+              label: '直线'
+            },
+            // {
+            //   value: 'arc',
+            //   label: '圆弧'
+            // },
+            // {
+            //   value: 'helical',
+            //   label: '螺旋线'
+            // }
+          ]}
+        />
+        <br /> <br />
+        <InputNumber 
+          addonBefore='填充间隔' 
+          addonAfter='mm'
+          value={fillInterval}
+          onChange={(value) => {setFillInterval(value)}}
+        />
+        <InputNumber 
+          addonBefore='Offset X' 
+          addonAfter='mm'
+          value={offsetX}
+          onChange={(value) => {setOffsetX(value)}}
+        />
+        <InputNumber 
+          addonBefore='Offset Y' 
+          addonAfter='mm'
+          value={offsetY}
+          onChange={(value) => {setOffsetY(value)}}
+        />
+        <InputNumber 
+          addonBefore='Offset Z' 
+          addonAfter='mm'
+          value={offsetZ}
+          onChange={(value) => {setOffsetZ(value)}}
+        />
+      </Modal>
+      
     </div> 
   )
 }

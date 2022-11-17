@@ -65,22 +65,31 @@ export default function App() {
   useEffect(()=>{
     root.name = 'Scene'
     setSelected([root.uuid])
-    // const mmdLoader = new MMDLoader();
-    // mmdLoader.load("model/ayaka/神里绫华.pmx",
-    //   (mmd) => {
-    //     mmd.name='神里绫华.pmx'
-    //     userScene.root.add(mmd)
-    //     userScene.setSelected(mmd.id.toString())
-    //   }, 
-    //   undefined, undefined
-    // )
-    
   }, [userScene.root])
   const handleContextMenu = (event: React.MouseEvent) => {
     event.preventDefault()
   }
+  const handleKeyDown = (event : React.KeyboardEvent) =>{
+    const parent = userScene.selectedObject?.parent
+    if(! parent || ! userScene.selectedObject) return
+    switch (event.key) {
+      case 'Delete':{
+        let index = parent.children.indexOf(userScene.selectedObject)
+        parent.remove(userScene.selectedObject)
+        if(parent.children.length === 0) {
+          userScene.setSelected([])
+          return
+        }
+        userScene.setSelected([parent.children[index].uuid])
+        userScene.scrollToObject(parent.children[index])
+        break;
+      }
+      default:
+        break;
+    }
+  }
   return (
-    <div className="App" onContextMenuCapture={handleContextMenu} >
+    <div className="App" onContextMenuCapture={handleContextMenu} onKeyDown={handleKeyDown}>
       <UserSceneContext.Provider value={userScene}>
         <Viewport />
         <Sidebar />

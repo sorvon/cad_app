@@ -21,7 +21,6 @@ export const stp2stls = (tusid : string, userScene: UserScene) => {
       duration: null,
     })
     ws2.onmessage = (async (event) => {
-      
       const group = await loadRemoteModel(tusid, JSON.parse(event.data))
       notification.success({
         key:tusid,
@@ -63,36 +62,35 @@ const loadRemoteModel = async (tusid:string, filelist : string[]) => {
   const group = new THREE.Group()
   group.name = tusid
   console.log(filelist)
-  filelist.forEach(async filename => {
-    const extension = filename.split( '.' ).pop()!.toLowerCase();
-    axios.get('/data/stl/' + tusid + '/' + filename).then(response=>{
-      switch (extension) {
-        case 'stl':{
-          let geometry = new STLLoader().parse( response.data );
-          const material = new THREE.MeshPhongMaterial({side:THREE.DoubleSide});
-          const mesh = new THREE.Mesh( geometry, material );
-          mesh.name = filename;
-          group.add(mesh)
-          break;
-        }
-        case 'obj':{
-          let obj = new OBJLoader().parse( response.data);
-          obj.name = filename;
-          group.add(obj)
-          break;
-        }
-        default:{
-          break;
-        }
+  for(const filename of filelist){
+    const extension = filename.split('.').pop()!.toLowerCase();
+    const response = await axios.get('/data/stl/' + tusid + '/' + filename);
+    switch (extension) {
+      case 'stl': {
+        let geometry = new STLLoader().parse(response.data);
+        const material = new THREE.MeshPhongMaterial({ side: THREE.DoubleSide });
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.name = filename;
+        group.add(mesh);
+        break;
       }
-    })    
-  });
+      case 'obj': {
+        let obj = new OBJLoader().parse(response.data);
+        obj.name = filename;
+        group.add(obj);
+        break;
+      }
+      default: {
+        break;
+      }
+    }
+  }
 
   return group
 }
 
-export const batch8box = (tusid : string, userScene: UserScene) => {
-  const ws = new WebSocket('ws://localhost:8000/stp/batch8box?tusid=' + tusid)
+export const batch8box = (tusid : string, userScene: UserScene, args: Object) => {
+  const ws = new WebSocket(`ws://localhost:8000/stp/batch8box?tusid=${tusid}&args=${JSON.stringify(args)}`)
   const parent = userScene.root.getObjectByName(tusid)
   if(!parent) return
   notification.info({
@@ -100,61 +98,52 @@ export const batch8box = (tusid : string, userScene: UserScene) => {
     message: (<><Spin/>  计算中</>),
     duration: null,
   });
-  ws.onmessage = (event)=>{
+  ws.onmessage = async (event)=>{
     const batched = JSON.parse(event.data)
     if(batched === 'batch8box') return
-    Object.keys(batched).forEach((key)=>{
-      console.log(key)
+    for(const key of Object.keys(batched)){
       const group = new THREE.Group()
       group.name = key
       parent?.add(group)
-      batched[key].forEach((value: string)=>{
-        const obj = parent?.getObjectByName(value)
-        obj?.removeFromParent()
-        obj && group.add(obj)
-      })
-    })
+      for(const value of batched[key]){
+        let obj = parent.getObjectByName(value)
+        if(! obj){
+          obj = await loadRemoteModel(tusid, [value])
+          obj = obj.children[0]
+          console.log(obj)
+        }
+        else{
+          obj.removeFromParent()
+        }
+        group.add(obj)
+      }
+    }
+    parent.children.filter((item)=>(item.children.length===0 && item instanceof THREE.Group))
+    .forEach(item => {item.removeFromParent()})
+    userScene.setSelected([parent])
   }
   ws.onclose = () => {
     notification.success({
       key: tusid,
       message: (<>计算完成</>),
     });
-    parent.children.filter((item)=>(item.children.length===0 && item instanceof THREE.Group))
-    .forEach(item => {item.removeFromParent()})
-    userScene.setSelected([parent])
   }
-  // try {
-  //   const response = await axios.post('/stp/batch8box/', {tusid})
-  //   const batched = response.data
-  //   if(batched === 'batch8box') return response
-  //   // const parent = userScene.root.getObjectByName(tusid)
-  //   Object.keys(batched).forEach((key)=>{
-  //     console.log(key)
-  //     const group = new THREE.Group()
-  //     group.name = key
-  //     parent?.add(group)
-  //     batched[key].forEach((value: string)=>{
-  //       console.log(value)
-  //       const obj = parent?.getObjectByName(value)
-  //       obj?.removeFromParent()
-  //       obj && group.add(obj)
-  //     })
-  //   })
-  //   parent.children.filter((item)=>(item.children.length===0 && item instanceof THREE.Group))
-  //   .forEach(item => {item.removeFromParent()})
-    
-  // return response
-  // } catch (error : any) {
-  //   console.log(error)
-  //   console.log(111)
-  //   message.error("error.message")
-  // }
-  
 }
 
-export const fill8box = (tusid : string) => {
-  const ws = new WebSocket('ws://localhost:8000/stp/fill8lines?tusid=' + tusid)
+export const fill8box = (tusid : string, userScene: UserScene, args: Object) => {
+  const parent = userScene.root.getObjectByName(tusid)
+  let batched = {}
+  parent?.children.forEach((value_group: THREE.Object3D) => {
+    const arr: string[] = []
+    value_group.children.forEach((value : THREE.Object3D) => {
+      arr.push(value.name)
+    })
+    batched = {...batched, [value_group.name]: arr}
+  })
+  const ws = new WebSocket(`ws://localhost:8000/stp/fill8lines?tusid=${tusid}&args=${JSON.stringify(args)}`)
+  ws.onopen = (event) => {
+    ws.send(JSON.stringify(batched))
+  }
   notification.info({
     key:tusid,
     message: (<><Spin/> 填充计算</>),
@@ -210,7 +199,18 @@ export const downloadDXF = (tusid: string) => {
     const path = event.data
     Modal.info({
       title: "处理完成",
-      content: (<a href={path} download={tusid+'.zip'}>点击下载</a>),
+      content: (<a href={path} download={getFormattedTime()+'.zip'}>点击下载</a>),
     })
   }
+}
+function getFormattedTime() {
+  var today = new Date();
+  var y = today.getFullYear();
+  // JavaScript months are 0-based.
+  var m = today.getMonth() + 1;
+  var d = today.getDate();
+  var h = today.getHours();
+  var mi = today.getMinutes();
+  var s = today.getSeconds();
+  return y +"-" + m +"-" + d +"-" + h +"-" + mi +"-" + s;
 }

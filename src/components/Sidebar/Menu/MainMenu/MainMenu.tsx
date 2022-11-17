@@ -10,6 +10,7 @@ import type { UploadProps } from 'antd';
 import * as tus from "tus-js-client";
 import { MenuClickEventHandler } from 'rc-menu/lib/interface';
 import { batch8box, stp2stls } from '../../../backrequest';
+import { ObjectLoader } from 'three';
 
 type Props = {}
 
@@ -28,11 +29,14 @@ function MainMenu({}: Props) {
     //   authorization: 'authorization-text',
     //   "Access-Control-Allow-Origin": "*",
     // }, 
-    accept : '.stl,.obj,.stp,.step',
+    accept : '.stl,.obj,.stp,.step,.json',
     multiple: true,
     maxCount: 1, 
     showUploadList: false,
     beforeUpload(file, fileList) {
+      userScene.root.children.forEach((value) => {
+        value.removeFromParent()
+      })
       const extension = file.name.split( '.' ).pop()!.toLowerCase();
       console.log(extension)
       const reader = new FileReader()
@@ -68,6 +72,21 @@ function MainMenu({}: Props) {
           }
           break;
         }
+        case 'json':{
+          groupConunt ++
+          reader.readAsText(file)
+          reader.onload = (event) => {
+            if(typeof event.target?.result === 'string'){
+              const loader = new THREE.ObjectLoader()
+              loader.parse(JSON.parse(event.target.result), (obj) =>{
+                console.log(obj)
+                group.add(obj)
+              })
+            }
+          }
+          
+          break;
+        }
         case 'stp': case 'step':{
           return true
         }
@@ -82,7 +101,6 @@ function MainMenu({}: Props) {
         }, 500)
       }
       return Upload.LIST_IGNORE
-      
     },
     customRequest(options) {
       if(! (options.file instanceof File)) return
@@ -146,7 +164,7 @@ function MainMenu({}: Props) {
         break;
       }
       case '5':{
-        batch8box('debug', userScene)
+        batch8box('debug', userScene, {x: 40, y: 40, z:10})
         break;
       }
       case '6':{
@@ -176,10 +194,15 @@ function MainMenu({}: Props) {
         const debugOld = userScene.root.getObjectByName('debug')
         if(!! debugOld) debugOld.removeFromParent()
         const loader = new THREE.ObjectLoader()
-        const object = await loader.loadAsync('/data/debug.json')
-        console.log(object)
-        userScene.root.add(object)
-        userScene.setSelected([object.uuid])
+        loader.load('/data/debug.json', (obj)=>{
+          console.log(obj)
+          userScene.root.add(obj)
+          userScene.setSelected([obj.uuid])
+        });
+        // const object = await loader.loadAsync('/data/debug.json')
+        // console.log(object)
+        // userScene.root.add(object)
+        // userScene.setSelected([object.uuid])
         break;
       }
       default:{

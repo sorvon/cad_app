@@ -87,7 +87,7 @@ export function Viewport({}: Props) {
       viewHelper.controls.enabled = !event.value
     } );
     
-    scene.add(transformControls) 
+    // scene.add(transformControls) 
 
     const clock = new THREE.Clock()
     const FPS = 60
@@ -109,7 +109,6 @@ export function Viewport({}: Props) {
           })
         }
 
-
         boxHelper.update()
         renderer.render(scene, camera)
         renderer.autoClear = false
@@ -117,7 +116,6 @@ export function Viewport({}: Props) {
         renderer.autoClear = true
         delta = delta % frametime
       }
-      
     })
 
     window.addEventListener( 'resize', ()=>{
