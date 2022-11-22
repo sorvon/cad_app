@@ -1,16 +1,17 @@
-import { useContext, useState } from 'react'
+import { useCallback, useContext, useMemo, useState } from 'react'
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import { STLLoader } from 'three/examples/jsm/loaders/STLLoader' ;
 
 import { UserSceneContext } from '../../../../App';
 import * as THREE from 'three'
-import { SettingFilled } from '@ant-design/icons';
+import { SettingFilled, CameraFilled } from '@ant-design/icons';
 import { Button, Dropdown, Menu, Upload, message, notification, Progress, Modal, Input, Spin } from 'antd';
-import type { UploadProps } from 'antd';
+import type { UploadProps, MenuProps } from 'antd';
 import * as tus from "tus-js-client";
-import { MenuClickEventHandler } from 'rc-menu/lib/interface';
 import { batch8box, stp2stls } from '../../../backrequest';
-import { ObjectLoader } from 'three';
+import { ObjectLoader, OrthographicCamera, PerspectiveCamera } from 'three';
+import { CombinedCamera } from '../../../Viewport/CombinedCamera';
+import { camera } from '../../../Viewport';
 
 type Props = {}
 
@@ -62,7 +63,6 @@ function MainMenu({}: Props) {
         case 'obj':{
           groupConunt ++
           reader.readAsText(file)
-
           reader.onload = (event) => {
             if(typeof event.target?.result === 'string'){
               let obj = new OBJLoader().parse( event.target.result);
@@ -96,6 +96,11 @@ function MainMenu({}: Props) {
       }
       if(groupConunt === fileList.length){
         setTimeout(()=>{
+          if(group.children.length === 1){
+            if(group.children[0] instanceof THREE.Group){
+              group = group.children[0]
+            }
+          } 
           userScene.root.add(group)
           userScene.setSelected([group.uuid])
         }, 500)
@@ -152,10 +157,9 @@ function MainMenu({}: Props) {
     },
   };
   
-  const handleMenuClick : MenuClickEventHandler = async info =>{
+  const handleMenuClick : MenuProps['onClick'] = async info =>{
     switch (info.key) {
       case '2':{
-        
         setNetConfig(true)
         break;
       }
@@ -210,46 +214,94 @@ function MainMenu({}: Props) {
       } 
     }
   }
-  const menu = (
-    <Menu
-      onClick={handleMenuClick}
-      items={[
+  const handleCameraSelect : MenuProps['onSelect'] = info => {
+    if (camera instanceof CombinedCamera){
+      switch (info.key) {
+        case '1':
+          camera.toOrthographic()
+          break
+        case '2':
+          camera.toPerspective()
+          break
+      }
+    }
+  }
+  const mainMenu : MenuProps['items'] = [
+    {
+      label: (<Upload  {...importProps}>Import</Upload>),
+      key: '1',
+    },
+    // {
+    //   label: '网络配置',
+    //   key: '2',
+    // },
+    {
+      type: 'divider'
+    },
+    {
+      label: 'debug',
+      type: 'group',
+      key: '3',
+      children:[
+        // {
+        //   label: 'Upload Success',
+        //   key: '4',
+        // },
+        // {
+        //   label: 'Batch8box',
+        //   key: '5',
+        // },
         {
-          label: (<Upload  {...importProps}>Import</Upload>),
-          key: '1',
+          label: 'load debug',
+          key: '6',
         },
-        {
-          label: '网络配置',
-          key: '2',
-        },
-        {
-          label: 'debug',
-          key: '3',
-          children:[{
-            label: 'Upload Success',
-            key: '4',
-          },
-          {
-            label: 'Batch8box',
-            key: '5',
-          },
-          {
-            label: 'load debug',
-            key: '6',
-          }
-        ]
-        },
-      ]}
-    />
-  );
+      ]
+    },
+  ]
+
+  
+  const cameraMenu : MenuProps['items'] = [
+    {
+      label: "正交相机",
+      key: '1',
+    },
+    {
+      label: "投影相机",
+      key: '2',
+    },
+  ]
+  
+  const defaultCameraKey = () => {
+    if(camera instanceof CombinedCamera)
+    {
+      if(camera.isOrthographicCamera) return ['1']
+      else if(camera.isPerspectiveCamera) return ['2']
+    }
+    if(camera instanceof OrthographicCamera) return ['1']
+    else if(camera instanceof PerspectiveCamera) return ['2']
+    return ['1']
+  }
   return (
     <div>
-      <Dropdown overlay={menu} trigger={['click']}>
-          <Button type="ghost" shape="circle" icon={<SettingFilled />} />
+      <Dropdown 
+        menu={{items: mainMenu, onClick: handleMenuClick, mode: 'vertical'}}
+        // destroyPopupOnHide={true}
+        arrow={true}
+        trigger={['click']}>
+        <Button type="ghost" shape="circle" icon={<SettingFilled style={{color:'aliceblue'}}/>} />
+      </Dropdown>
+      <Dropdown 
+        menu={{items: cameraMenu, 
+          onSelect: handleCameraSelect,
+          defaultSelectedKeys: defaultCameraKey(),
+          disabled: !(camera instanceof CombinedCamera),
+          selectable: true}} 
+        trigger={['click']}>
+        <Button type="ghost" shape="circle" icon={<CameraFilled style={{color:'aliceblue'}}/>} />
       </Dropdown>
       <Modal 
         title='网络配置'
-        visible={netConfig} 
+        open={netConfig} 
         onCancel={() => setNetConfig(false)}
       >
         <Input 

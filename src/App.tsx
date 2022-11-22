@@ -5,9 +5,9 @@ import { Sidebar } from './components/Sidebar';
 import * as THREE from 'three'
 import { MMDLoader } from 'three/examples/jsm/loaders/MMDLoader';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
-import 'antd/dist/antd.css';
+// import 'antd/dist/reset.css';
 import axios from 'axios';
-import { message } from 'antd';
+import { ConfigProvider, message } from 'antd';
 axios.defaults.timeout = 300000
 export const UserSceneContext = createContext<UserScene>({
   root: new THREE.Object3D(),
@@ -90,10 +90,22 @@ export default function App() {
   }
   return (
     <div className="App" onContextMenuCapture={handleContextMenu} onKeyDown={handleKeyDown}>
+      <ConfigProvider
+        
+        theme={{
+          token: {
+            borderRadius: 2,
+            
+          },
+        }}
+      >
       <UserSceneContext.Provider value={userScene}>
+
         <Viewport />
         <Sidebar />
+
       </UserSceneContext.Provider>
+      </ConfigProvider>
     </div>
   )
 }

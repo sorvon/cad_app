@@ -2,11 +2,10 @@ import React, { useCallback, useContext, useRef, useState } from 'react'
 import { UserSceneContext } from '../../../App';
 import { MoveObjectCommand } from '../../../command';
 import './Hierarchy.css'
-import { Dropdown, Input, InputNumber, Menu, message, Modal, notification, Select, Spin, Tree } from 'antd';
-import type { DirectoryTreeProps } from 'antd/lib/tree';
-import { MenuClickEventHandler } from 'rc-menu/lib/interface';
+import { Dropdown, Input, InputNumber, Menu, MenuProps, message, Modal, notification, Select, Spin, Tree } from 'antd';
 import {batch8box, downloadDXF, fill8box} from '../../backrequest'
 import * as THREE from 'three';
+import { DirectoryTreeProps } from 'antd/es/tree';
 export function Hierarchy() {
   const userScene = useContext(UserSceneContext)
   const [expanded, setExpanded] = useState([userScene.root.uuid])
@@ -15,16 +14,16 @@ export function Hierarchy() {
   const [menuVisible, setMenuVisible] = useState(false)
   const [menuDisable, setMenuDisable] = useState(false)
   const [groupConfig, setGroupConfig] = useState(false)
-  const [groupX, setGroupX] = useState(40)
-  const [groupY, setGroupY] = useState(40)
-  const [groupZ, setGroupZ] = useState(10)
+  const [groupX, setGroupX] = useState<string | number | null>(40)
+  const [groupY, setGroupY] = useState<string | number | null>(40)
+  const [groupZ, setGroupZ] = useState<string | number | null>(10)
   const [groupTaper, setGroupTaper] = useState(5)
   const [fillConfig, setFillConfig] = useState(false)
-  const [fillInterval, setFillInterval] = useState(0.01)
+  const [fillInterval, setFillInterval] = useState<string | number | null>(0.01)
   const [fillType, setFillType] = useState("line")
-  const [offsetX, setOffsetX] = useState(0)
-  const [offsetY, setOffsetY] = useState(0)
-  const [offsetZ, setOffsetZ] = useState(0)
+  const [offsetX, setOffsetX] = useState<string | number | null>(0)
+  const [offsetY, setOffsetY] = useState<string | number | null>(0)
+  const [offsetZ, setOffsetZ] = useState<string | number | null>(0)
   const tusidRef = useRef('')
 
   userScene.scrollToObject = useCallback((object:THREE.Object3D)=>{
@@ -138,7 +137,7 @@ export function Hierarchy() {
     tusidRef.current = obj.name
     console.log(obj.name.length)
   }
-  const handleMenuClick : MenuClickEventHandler  = async (info) => {
+  const handleMenuClick : MenuProps['onClick']  = async (info) => {
     setMenuVisible(false)
     switch (info.key) {
       case '1':{
@@ -153,7 +152,7 @@ export function Hierarchy() {
         if(!children) break
         for (let i = 0; i < children.length; i++) {
           if(!(children[i] instanceof THREE.Group)){
-            message.warn("请先分组")
+            message.warning("请先分组")
             return
           }          
         }
@@ -181,45 +180,40 @@ export function Hierarchy() {
     }
     
   }
-  const menu = (
-    <Menu
-      onClick={handleMenuClick}
-      items={[
-        {
-          label: '导出json',
-          key : '4',
-          disabled : menuDisable,
-        },
-        {
-          label: '分组',
-          key: '1',
-          disabled : menuDisable,
-        },
-        {
-          label: '填充',
-          key: '2',
-          disabled : menuDisable,
-        },
-        {
-          label: '下载',
-          key: '3',
-          disabled : menuDisable,
-        },
-      ]}
-    />
-  );
+  const menu : MenuProps['items'] = [
+  {
+    label: '导出json',
+    key : '4',
+    disabled : menuDisable,
+  },
+  {
+    label: '分组',
+    key: '1',
+    disabled : menuDisable,
+  },
+  {
+    label: '填充',
+    key: '2',
+    disabled : menuDisable,
+  },
+  {
+    label: '下载',
+    key: '3',
+    disabled : menuDisable,
+  },
+]
   return (
     <div ref={hierarchyRef} className='Hierarchy' tabIndex={0} onKeyDown={handleKeyDown}> 
       <Dropdown 
-        overlay={menu} 
+        menu={{items: menu, onClick: handleMenuClick}} 
         trigger={['contextMenu']} 
-        visible={menuVisible} 
-        onVisibleChange={(visible)=>{setMenuVisible(visible)}}
+        open={menuVisible} 
+        onOpenChange={(visible)=>{setMenuVisible(visible)}}
       >
         <Tree 
           ref={treeRef}
-          rootStyle={{background:'transparent'}}
-          style={{background:'transparent'}}
+          rootStyle={{background:'transparent', color: 'darkblue'}}
+          style={{background:'transparent', color: 'aliceblue'}}
           draggable={{icon:false}}
           
           // multiple
@@ -239,7 +233,7 @@ export function Hierarchy() {
       </Dropdown>
       <Modal 
         title='分组参数'
-        visible={groupConfig} 
+        open={groupConfig} 
         onCancel={() => setGroupConfig(false)}
         onOk={() => {
           batch8box(tusidRef.current, userScene, {x: groupX, y: groupY, z:groupZ})
@@ -273,7 +267,7 @@ export function Hierarchy() {
       </Modal>
       <Modal 
         title='填充参数'
-        visible={fillConfig} 
+        open={fillConfig} 
         onCancel={() => setFillConfig(false)}
         onOk={() => {
           fill8box(tusidRef.current, userScene, {fillType, fillInterval, offsetX, offsetY, offsetZ})

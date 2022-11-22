@@ -4,6 +4,8 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import * as THREE from 'three'
 import { AmbientLight, Mesh, PointLight } from 'three'
 import { ViewHelper } from './ViewHelper';
+import {InfiniteGridHelper} from "./InfiniteGridHelper";
+import { CombinedCamera } from "./CombinedCamera";
 import './Viewport.css'
 import { UserSceneContext } from '../../App';
 import { DetailView } from './DetailView';
@@ -11,8 +13,9 @@ import { Dropdown, Menu, Modal, Input} from 'antd';
 import { MenuClickEventHandler } from 'rc-menu/lib/interface';
 
 type Props = {}
-const camera: THREE.OrthographicCamera|THREE.PerspectiveCamera 
-              = new THREE.OrthographicCamera()
+export const camera: THREE.OrthographicCamera|THREE.PerspectiveCamera | CombinedCamera
+              = new CombinedCamera(1920, 1080, 50, 0.01, 20000, 0.01, 20000)
+              // = new THREE.PerspectiveCamera()
 const renderer = new THREE.WebGLRenderer({powerPreference:'high-performance'})
 const scene = new THREE.Scene()
 const transformControls = new TransformControls(camera, renderer.domElement)
@@ -49,11 +52,17 @@ export function Viewport({}: Props) {
       camera.top = webglOutput.current.offsetHeight / 2
       camera.bottom = webglOutput.current.offsetHeight / -2
     }
-    camera.near = 0.1
+    else if(camera instanceof CombinedCamera){
+      camera.setSize(webglOutput.current.offsetWidth, webglOutput.current.offsetHeight)
+      camera.toOrthographic()
+    }
+    
+    camera.name = "Main Camera"
+    camera.near = 0.01
     camera.far = 20000
     camera.updateProjectionMatrix();
 
-    camera.position.set( 0, 0, 400 );
+    camera.position.set( 200, 200, 400 );
     camera.lookAt(scene.position)
     scene.add(camera) 
     
@@ -76,13 +85,16 @@ export function Viewport({}: Props) {
     const cameraLight = new PointLight(0xffffff, 0.8)
     camera.add(cameraLight)
 
+    const  infiniteGridHelper = new InfiniteGridHelper(20, 200, new THREE.Color(255, 255, 255), 8000)
+    scene.add( infiniteGridHelper );
     const texture = new THREE.TextureLoader().load("gradient.png")
     texture.sourceFile = "gradient.png"
     texture.needsUpdate = true;
     
-    scene.background = texture 
+    // scene.background = texture 
+    scene.background = new THREE.Color(71/255, 71/255, 71/255)
 
-    transformControls.addEventListener( 'dragging-changed', function ( event ) {
+    transformControls.addEventListener( 'dragging-changed',( event ) => {
       orbitControls.enabled = !event.value;
       viewHelper.controls.enabled = !event.value
     } );
@@ -130,6 +142,9 @@ export function Viewport({}: Props) {
         camera.right = webglOutput.current.offsetWidth / 2
         camera.top = webglOutput.current.offsetHeight / 2
         camera.bottom = webglOutput.current.offsetHeight / -2
+      }
+      else if(camera instanceof CombinedCamera){
+        camera.setSize(webglOutput.current.offsetWidth, webglOutput.current.offsetHeight)
       }
       camera.updateProjectionMatrix();
       renderer.setSize( webglOutput.current.offsetWidth , webglOutput.current.offsetHeight );
@@ -221,10 +236,8 @@ export function Viewport({}: Props) {
     box.setFromObject( target );
 
     if ( box.isEmpty() === false ) {
-      
       box.getCenter( center );
       distance = box.getBoundingSphere( sphere ).radius;
-
     } else {
       // Focusing on an Group, AmbientLight, etc
       center.setFromMatrixPosition( target.matrixWorld );
@@ -261,7 +274,7 @@ export function Viewport({}: Props) {
   );
   return (
     <div onContextMenuCapture={handleContextMenu} >
-      <Dropdown overlay={menu}  trigger={['contextMenu']}>
+      {/* <Dropdown overlay={menu}  trigger={['contextMenu']}> */}
         <div 
           className='Viewport' 
           ref={webglOutput} 
@@ -270,7 +283,7 @@ export function Viewport({}: Props) {
           onDoubleClick={handleDoubleClick}
           
         />
-      </Dropdown>
+      {/* </Dropdown> */}
       
       <div 
         ref={viewHelperRef}
@@ -281,7 +294,7 @@ export function Viewport({}: Props) {
       
       <Modal
         title='参数配置'
-        visible={modalSetting}
+        open={modalSetting}
         onCancel={() => setModalSetting(false)}
         onOk={() => setModalSetting(false)}
       >
@@ -290,7 +303,7 @@ export function Viewport({}: Props) {
       <Modal  
         centered 
         footer={null} 
-        visible={modalDetail} 
+        open={modalDetail} 
         onCancel={() => setModalDetail(false)}
         onOk={() => setModalDetail(false)}
         width='80vw'
