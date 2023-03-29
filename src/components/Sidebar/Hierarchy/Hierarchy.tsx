@@ -2,10 +2,13 @@ import React, { useCallback, useContext, useRef, useState } from 'react'
 import { UserSceneContext } from '../../../App';
 import { MoveObjectCommand } from '../../../command';
 import './Hierarchy.css'
-import { Dropdown, Input, InputNumber, Menu, MenuProps, message, Modal, notification, Select, Spin, Tree } from 'antd';
+import { Dropdown, Input, InputNumber, Menu, MenuProps, message, Modal, notification, Radio, Select, Spin, Tree } from 'antd';
+import { red, volcano, orange, gold, yellow, lime, green, cyan, blue, geekblue, purple, magenta } from '@ant-design/colors';
 import {batch8box, downloadDXF, fill8box} from '../../backrequest'
 import * as THREE from 'three';
 import { DirectoryTreeProps } from 'antd/es/tree';
+import { useLocalStorage } from 'usehooks-ts'
+
 export function Hierarchy() {
   const userScene = useContext(UserSceneContext)
   const [expanded, setExpanded] = useState([userScene.root.uuid])
@@ -14,16 +17,17 @@ export function Hierarchy() {
   const [menuVisible, setMenuVisible] = useState(false)
   const [menuDisable, setMenuDisable] = useState(false)
   const [groupConfig, setGroupConfig] = useState(false)
-  const [groupX, setGroupX] = useState<string | number | null>(40)
-  const [groupY, setGroupY] = useState<string | number | null>(40)
-  const [groupZ, setGroupZ] = useState<string | number | null>(10)
-  const [groupTaper, setGroupTaper] = useState(5)
+  const [groupX, setGroupX] = useLocalStorage<number | null>("groupX", 40)
+  const [groupY, setGroupY] = useLocalStorage<number | null>("groupY", 40)
+  const [groupZ, setGroupZ] = useLocalStorage<number | null>("groupZ", 10)
+  const [groupTaper, setGroupTaper] = useLocalStorage<number | null>("groupTaper", 5)
   const [fillConfig, setFillConfig] = useState(false)
-  const [fillInterval, setFillInterval] = useState<string | number | null>(0.01)
-  const [fillType, setFillType] = useState("line")
-  const [offsetX, setOffsetX] = useState<string | number | null>(0)
-  const [offsetY, setOffsetY] = useState<string | number | null>(0)
-  const [offsetZ, setOffsetZ] = useState<string | number | null>(0)
+  const [fillInterval, setFillInterval] = useLocalStorage<string | number | null>("fillInterval", 0.01)
+  const [fillType, setFillType] = useLocalStorage("fillType", "line")
+  const [offsetX, setOffsetX] = useLocalStorage<number | null>("offsetX", 0)
+  const [offsetY, setOffsetY] = useLocalStorage<number | null>("offsetX", 0)
+  const [offsetZ, setOffsetZ] = useLocalStorage<number | null>("offsetX", 0)
+  const [colorList, setColorList] = useState([red, volcano, orange, gold, yellow, lime, green, cyan, blue, geekblue, purple, magenta ])
   const tusidRef = useRef('')
 
   userScene.scrollToObject = useCallback((object:THREE.Object3D)=>{
@@ -121,32 +125,33 @@ export function Hierarchy() {
   }
   const handleRightClick:DirectoryTreeProps['onRightClick'] = (event) => {
     const obj = event.node as unknown as THREE.Object3D
-    if(obj.uuid === userScene.root.uuid || obj.children.length <= 0){
+    if(obj.uuid === userScene.root.uuid || obj.children.length <= 0
+      ||(obj.name.length !== 32 && obj.name !== 'debug')){
       setMenuDisable(true)
       return
     }
-    if(obj.name.length === 4){
-      if(!isNaN(parseInt(obj.name[0])) && !isNaN(parseInt(obj.name[1]))
-        &&!isNaN(parseInt(obj.name[2])) && !isNaN(parseInt(obj.name[3]))){
-          setMenuDisable(true)
-          return
-      }
-    }
+    // if(obj.name.length === 4){
+    //   if(!isNaN(parseInt(obj.name[0])) && !isNaN(parseInt(obj.name[1]))
+    //     &&!isNaN(parseInt(obj.name[2])) && !isNaN(parseInt(obj.name[3]))){
+    //       setMenuDisable(true)
+    //       return
+    //   }
+    // }
 
     setMenuDisable(false)
     tusidRef.current = obj.name
-    console.log(obj.name.length)
+    // console.log(obj.name.length)
   }
   const handleMenuClick : MenuProps['onClick']  = async (info) => {
     setMenuVisible(false)
     switch (info.key) {
-      case '1':{
+      case 'batch':{
         if(tusidRef.current.length !== 32 && tusidRef.current !== 'debug') return
         setGroupConfig(true)
         // batch8box(tusidRef.current, userScene) 
         break;
       }
-      case '2':{
+      case 'fill':{
         if(tusidRef.current.length !== 32 && tusidRef.current !== 'debug') return
         const children = userScene.root.getObjectByName(tusidRef.current)?.children
         if(!children) break
@@ -160,17 +165,30 @@ export function Hierarchy() {
         // fill8box(tusidRef.current)
         break;
       }
-      case '3':{
-        downloadDXF(tusidRef.current)
+      case 'download':{
+        downloadDXF(tusidRef.current, userScene)
         break;
       }
-      case '4':{
+      case 'export json':{
         const export_obj = userScene.root.getObjectByName(tusidRef.current)
-        console.log( new Blob([JSON.stringify(export_obj?.toJSON())], {type:'application/json'}))
+        // console.log( new Blob([JSON.stringify(export_obj?.toJSON())], {type:'application/json'}))
         const data =  new Blob([JSON.stringify(export_obj?.toJSON())], {type:'application/json'})
         Modal.info({
           title: "导出json",
           content: (<a href={URL.createObjectURL(data)} download={tusidRef.current+'.json'}>点击下载</a>),
+        })
+        break;
+      }
+      case 'children shade':{
+        const children = userScene.root.getObjectByName(tusidRef.current)?.children
+        if(!children) break
+        children.forEach((child, index)=>{
+          child.traverse((obj) => {
+            if(obj instanceof THREE.Mesh){
+              obj.material = new THREE.MeshPhongMaterial({side:THREE.DoubleSide})
+              obj.material.color.set(colorList[index%colorList.length][9 - index % 8])              
+            }
+          })
         })
         break;
       }
@@ -183,24 +201,28 @@ export function Hierarchy() {
   const menu : MenuProps['items'] = [
   {
     label: '导出json',
-    key : '4',
+    key : 'export json',
     disabled : menuDisable,
   },
   {
     label: '分组',
-    key: '1',
+    key: 'batch',
     disabled : menuDisable,
   },
   {
     label: '填充',
-    key: '2',
+    key: 'fill',
     disabled : menuDisable,
   },
   {
     label: '下载',
-    key: '3',
+    key: 'download',
     disabled : menuDisable,
   },
+  {
+    label: '子节点着色',
+    key: 'children shade',
+  }
 ]
   return (
     <div ref={hierarchyRef} className='Hierarchy' tabIndex={0} onKeyDown={handleKeyDown}> 
@@ -212,8 +234,6 @@ export function Hierarchy() {
       >
         <Tree 
           ref={treeRef}
-          rootStyle={{background:'transparent', color: 'darkblue'}}
-          style={{background:'transparent', color: 'aliceblue'}}
           draggable={{icon:false}}
           
           // multiple
@@ -236,10 +256,11 @@ export function Hierarchy() {
         open={groupConfig} 
         onCancel={() => setGroupConfig(false)}
         onOk={() => {
-          batch8box(tusidRef.current, userScene, {x: groupX, y: groupY, z:groupZ})
+          batch8box(tusidRef.current, userScene, {x: groupX, y: groupY, z:groupZ, taper:groupTaper, type:userScene.groupType})
           setGroupConfig(false)
         }}
       >
+        <br/>
         <InputNumber 
           addonBefore='扫场X' 
           addonAfter='mm'
@@ -258,33 +279,37 @@ export function Hierarchy() {
           value={groupZ}
           onChange={(value) => {setGroupZ(value)}}
         />
-        {/* <InputNumber 
+        <InputNumber 
           addonBefore='倾角  :' 
-          addonAfter='°'
+          addonAfter=' ° '
           value={groupTaper}
+          disabled={userScene.groupType===1}
           onChange={(value) => {setGroupTaper(value)}}
-        /> */}
+        />
+        <Radio.Group onChange={(value)=>userScene.setGroupType(value.target.value)} value={userScene.groupType}>
+          <Radio value={1}>三轴</Radio>
+          <Radio value={2}>五轴</Radio>
+        </Radio.Group>
       </Modal>
       <Modal 
         title='填充参数'
         open={fillConfig} 
         onCancel={() => setFillConfig(false)}
         onOk={() => {
-          fill8box(tusidRef.current, userScene, {fillType, fillInterval, offsetX, offsetY, offsetZ})
+          fill8box(tusidRef.current, userScene, {fillType, fillInterval, offsetX, offsetY, offsetZ, type:userScene.groupType})
           setFillConfig(false)
         }}
       >
         <Select value={fillType} onChange={setFillType} style={{ width: 120 }}
-          disabled={true}
           options ={[
             {
               value: 'line',
               label: '直线'
             },
-            // {
-            //   value: 'arc',
-            //   label: '圆弧'
-            // },
+            {
+              value: 'arc',
+              label: '圆弧'
+            },
             // {
             //   value: 'helical',
             //   label: '螺旋线'
@@ -316,6 +341,10 @@ export function Hierarchy() {
           value={offsetZ}
           onChange={(value) => {setOffsetZ(value)}}
         />
+        <Radio.Group onChange={(value)=>userScene.setGroupType(value.target.value)} value={userScene.groupType} disabled={true}>
+          <Radio value={1}>三轴</Radio>
+          <Radio value={2}>五轴</Radio>
+        </Radio.Group>
       </Modal>
       
     </div> 

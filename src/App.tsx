@@ -2,12 +2,17 @@ import React, { Component, createContext, useContext, useEffect, useRef, useStat
 import './App.css';
 import { Viewport } from './components/Viewport';
 import { Sidebar } from './components/Sidebar';
+import { ProcessPanel } from "./components/ProcessPanel";
 import * as THREE from 'three'
 import { MMDLoader } from 'three/examples/jsm/loaders/MMDLoader';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
-// import 'antd/dist/reset.css';
+import zhCN from 'antd/locale/zh_CN';
+import 'antd/dist/reset.css';
 import axios from 'axios';
-import { ConfigProvider, message } from 'antd';
+import { ConfigProvider, Layout, theme } from 'antd';
+import { useLocalStorage } from 'usehooks-ts'
+import { Content } from 'antd/es/layout/layout';
+import Sider from 'antd/es/layout/Sider';
 axios.defaults.timeout = 300000
 export const UserSceneContext = createContext<UserScene>({
   root: new THREE.Object3D(),
@@ -18,14 +23,17 @@ export const UserSceneContext = createContext<UserScene>({
   focusToObject: () => {},
   url: '',
   setUrl: () => {},
+  groupType : 1,
+  setGroupType : () => {}
 })
 
 const root = new THREE.Group()
 
 export default function App() {
   
-  const [selected, setSelected] = useState(Array<string>());
+  const [selected, setSelected] = useState(Array<string>())
   const [url, setUrl] = useState('192.168.91.128:1080')
+  const [groupType, setGroupType] = useLocalStorage<number>("groupType", 1)
   let selectedObject = useRef<THREE.Object3D | undefined>(undefined)
   // const root = useRef(new THREE.Group())
   // const camera = useRef(new THREE.OrthographicCamera())
@@ -41,7 +49,7 @@ export default function App() {
         selectedObject.current?.traverse((object)=>{
           if(object instanceof THREE.Mesh){
             object.material = new THREE.MeshPhongMaterial({side:THREE.DoubleSide})
-            object.material.color.set(0xffffff)
+            object.material.color.set('#d9d9d9')
           }
         })
       } 
@@ -50,7 +58,7 @@ export default function App() {
         selectedObject.current.traverse((object)=>{
           if(object instanceof THREE.Mesh){
             object.material = new THREE.MeshPhongMaterial({side:THREE.DoubleSide})
-            object.material.color.set(0xff0000)
+            object.material.color.set('#13c2c2')
           }
         })
       } 
@@ -60,6 +68,8 @@ export default function App() {
     },
     url,
     setUrl,
+    groupType,
+    setGroupType
   }
 
   useEffect(()=>{
@@ -88,22 +98,43 @@ export default function App() {
         break;
     }
   }
+  const {
+    token: { colorBgContainer },
+  } = theme.useToken();
+  const siderStyle: React.CSSProperties = {
+    textAlign: 'center',
+    lineHeight: '50px',
+    color: '#fff',
+    background: colorBgContainer,
+  };
+  
   return (
     <div className="App" onContextMenuCapture={handleContextMenu} onKeyDown={handleKeyDown}>
       <ConfigProvider
-        
+        locale={zhCN}
         theme={{
+          "components": {
+            "Tree": {
+              "colorBgContainer": "transparent",
+              "controlItemBgActive": "rgba(0, 0, 0, 0.45)",
+              "colorText": "aliceblue"
+            }
+          },
           token: {
             borderRadius: 2,
-            
           },
         }}
       >
       <UserSceneContext.Provider value={userScene}>
-
-        <Viewport />
-        <Sidebar />
-
+        <Layout>
+          <Content>
+            <Viewport />
+            <Sidebar />
+          </Content>
+          <Sider width={300} style={siderStyle}>
+            <ProcessPanel/>
+          </Sider>
+        </Layout>
       </UserSceneContext.Provider>
       </ConfigProvider>
     </div>

@@ -1,7 +1,9 @@
 import React, { RefObject, useCallback, useContext, useEffect, useRef, useState } from 'react'
-import { TransformControls } from 'three/examples/jsm/controls/TransformControls';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import * as THREE from 'three'
+import { TransformControls } from 'three/examples/jsm/controls/TransformControls';
+// import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
+
 import { AmbientLight, Mesh, PointLight } from 'three'
 import { ViewHelper } from './ViewHelper';
 import {InfiniteGridHelper} from "./InfiniteGridHelper";
@@ -9,7 +11,7 @@ import { CombinedCamera } from "./CombinedCamera";
 import './Viewport.css'
 import { UserSceneContext } from '../../App';
 import { DetailView } from './DetailView';
-import { Dropdown, Menu, Modal, Input} from 'antd';
+import { Dropdown, Menu, Modal, Input, MenuProps} from 'antd';
 import { MenuClickEventHandler } from 'rc-menu/lib/interface';
 
 type Props = {}
@@ -113,13 +115,6 @@ export function Viewport({}: Props) {
         if ( viewHelper.animating === true ) {
           viewHelper.update( delta ); 
         }
-        if(!!userScene.selectedObject){
-          userScene.selectedObject.traverseVisible((child) => {
-            if(child instanceof THREE.Mesh){
-              child.material as THREE.Material
-            }
-          })
-        }
 
         boxHelper.update()
         renderer.render(scene, camera)
@@ -148,17 +143,17 @@ export function Viewport({}: Props) {
       }
       camera.updateProjectionMatrix();
       renderer.setSize( webglOutput.current.offsetWidth , webglOutput.current.offsetHeight );
-      // console.log(webglOutput.current.clientWidth, webglOutput.current.clientHeight)
     } );
   }, [userScene.root])
 
   // attach selected by boxHelper
   useEffect(()=>{
-    const tmp = userScene.selectedObject
-    if(tmp !== undefined){
-      // console.log(userScene.selected[0])
-      transformControls.attach(tmp)
-      boxHelper.setFromObject(tmp)
+    const obj = userScene.selectedObject
+    
+    if(obj !== undefined){
+      console.log(obj.userData)
+      transformControls.attach(obj)
+      boxHelper.setFromObject(obj)
       boxHelper.visible = true
     }
     else{
@@ -176,7 +171,6 @@ export function Viewport({}: Props) {
     event.stopPropagation()
   }
   const handlePointerUp = (event:React.PointerEvent) => {
-    console.log('up')
     UpX = event.clientX
     UpY = event.clientY
     event.stopPropagation()
@@ -202,7 +196,7 @@ export function Viewport({}: Props) {
     }
   }
   const handleContextMenu = (event: React.MouseEvent) => {
-    if(isMovedRef.current){
+    if(userScene.selectedObject === undefined || isMovedRef.current){
       event.stopPropagation()
     }
   }
@@ -257,24 +251,16 @@ export function Viewport({}: Props) {
     }
     
   }, [])
-  const menu = (
-    <Menu
-      onClick={handleMenu}
-      items={[
-        {
-          label: '参数配置',
-          key: '1',
-        },
-        {
-          label: '填充详情',
-          key: '2',
-        },
-      ]}
-    />
-  );
+  const menu : MenuProps['items'] = [
+    {
+      label: '填充详情',
+      key: '2',
+      // disabled : userScene.selectedObject === undefined,
+    },
+  ]
   return (
     <div onContextMenuCapture={handleContextMenu} >
-      {/* <Dropdown overlay={menu}  trigger={['contextMenu']}> */}
+      <Dropdown menu={{items: menu, onClick: handleMenu}}  trigger={['contextMenu']}>
         <div 
           className='Viewport' 
           ref={webglOutput} 
@@ -283,7 +269,7 @@ export function Viewport({}: Props) {
           onDoubleClick={handleDoubleClick}
           
         />
-      {/* </Dropdown> */}
+      </Dropdown>
       
       <div 
         ref={viewHelperRef}
@@ -308,7 +294,7 @@ export function Viewport({}: Props) {
         onOk={() => setModalDetail(false)}
         width='80vw'
         destroyOnClose
-        bodyStyle={{height:'80vh', width:'80vw'}}
+        bodyStyle={{height:'100vh', width:'100vw'}}
       >
         <DetailView detailObject={userScene.selectedObject} />
       </Modal>

@@ -8,7 +8,7 @@ import { SettingFilled, CameraFilled } from '@ant-design/icons';
 import { Button, Dropdown, Menu, Upload, message, notification, Progress, Modal, Input, Spin } from 'antd';
 import type { UploadProps, MenuProps } from 'antd';
 import * as tus from "tus-js-client";
-import { batch8box, stp2stls } from '../../../backrequest';
+import { batch8box, stp2stls, stl2stls } from '../../../backrequest';
 import { ObjectLoader, OrthographicCamera, PerspectiveCamera } from 'three';
 import { CombinedCamera } from '../../../Viewport/CombinedCamera';
 import { camera } from '../../../Viewport';
@@ -25,23 +25,36 @@ function MainMenu({}: Props) {
   const importProps: UploadProps = {
     name: 'file',
     action: '/data/upload/',
-    // action: 'http://192.168.91.128:8100/',
+    // action: 'http://localhost:8000/data/upload/',
     // headers: {
     //   authorization: 'authorization-text',
     //   "Access-Control-Allow-Origin": "*",
     // }, 
     accept : '.stl,.obj,.stp,.step,.json',
-    multiple: true,
+    // multiple: true,
     maxCount: 1, 
     showUploadList: false,
     beforeUpload(file, fileList) {
       userScene.root.children.forEach((value) => {
         value.removeFromParent()
       })
+      const updateScene = ()=>{
+        if(group.children.length === 1){
+          if(group.children[0] instanceof THREE.Group){
+            group = group.children[0]
+          }
+        } 
+        userScene.root.add(group)
+        userScene.setSelected([group.uuid])
+      }
       const extension = file.name.split( '.' ).pop()!.toLowerCase();
+      
       console.log(extension)
       const reader = new FileReader()
       switch (extension) {
+        case 'stp': case 'step': case 'stl':{
+          return true
+        }
         case 'stl':{
           groupConunt ++
           if ( reader.readAsBinaryString !== undefined ) {
@@ -57,6 +70,7 @@ function MainMenu({}: Props) {
             const mesh = new THREE.Mesh( geometry, material );
             mesh.name = file.name;
             group.add(mesh)
+            updateScene()
           }
           break;
         }
@@ -68,6 +82,7 @@ function MainMenu({}: Props) {
               let obj = new OBJLoader().parse( event.target.result);
               obj.name = file.name;
               group.add(obj)
+              updateScene()
             }
           }
           break;
@@ -81,29 +96,16 @@ function MainMenu({}: Props) {
               loader.parse(JSON.parse(event.target.result), (obj) =>{
                 console.log(obj)
                 group.add(obj)
+                updateScene()
               })
             }
           }
-          
           break;
         }
-        case 'stp': case 'step':{
-          return true
-        }
+        
         default:{
           break;
         }
-      }
-      if(groupConunt === fileList.length){
-        setTimeout(()=>{
-          if(group.children.length === 1){
-            if(group.children[0] instanceof THREE.Group){
-              group = group.children[0]
-            }
-          } 
-          userScene.root.add(group)
-          userScene.setSelected([group.uuid])
-        }, 500)
       }
       return Upload.LIST_IGNORE
     },
@@ -111,6 +113,8 @@ function MainMenu({}: Props) {
       if(! (options.file instanceof File)) return
       console.log(options.file)
       let file = options.file
+      console.log(file.name)
+      const extension = file.name.split( '.' ).pop()!.toLowerCase();
       let upload = new tus.Upload(file, {
         endpoint: options.action,
         retryDelays: [0, 3000, 5000, 10000, 20000],
@@ -147,7 +151,8 @@ function MainMenu({}: Props) {
           const tusid = upload.url?.split('/').pop()
           console.log('tusid', tusid)
           if(!tusid) return
-          stp2stls(tusid, userScene)
+          if(extension === 'stl') stl2stls(tusid, userScene)
+          else stp2stls(tusid, userScene)
           console.log(upload)
         }
       })
@@ -240,7 +245,6 @@ function MainMenu({}: Props) {
     },
     {
       label: 'debug',
-      type: 'group',
       key: '3',
       children:[
         // {

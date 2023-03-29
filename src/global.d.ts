@@ -7,4 +7,6 @@ type UserScene = {
   focusToObject: Function
   url: string
   setUrl: Function
+  groupType : number
+  setGroupType : Function
 }

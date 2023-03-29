@@ -21,7 +21,7 @@ export function DetailView(props: Props) {
     const parent = detailObjectSlt?.parent
     const grandparent = parent?.parent 
     if(! grandparent) return
-    const path = '/data/group/' + grandparent.name + '/' + parent.name + '/' + detailObjectSlt.name.slice(0, -3) + 'deltaY(0.01).dxf'
+    const path = '/data/group/' + grandparent.name + '/' + parent.name + '/' + detailObjectSlt.name.slice(0, -3) + 'deltaY.dxf'
     // const path = '/data/group/83579eefadcaaf99d16749d76cc7673d/0001/1.deltaY(0.01).dxf'
     console.log(path) 
     const detailObject = await loader.load(path)
@@ -86,8 +86,10 @@ export function DetailView(props: Props) {
       camera.top = webglOutput.current.offsetHeight / 2
       camera.bottom = webglOutput.current.offsetHeight / -2
       camera.updateProjectionMatrix();
-      renderer.setSize( webglOutput.current.offsetWidth , webglOutput.current.offsetHeight );
+      renderer.setSize( webglOutput.current.offsetHeight , webglOutput.current.offsetHeight );
+      // renderer.setSize( webglOutput.current.clientWidth , webglOutput.current.clientWidth );
       console.log(webglOutput.current.clientWidth, webglOutput.current.clientHeight)
+      console.log(webglOutput.current.offsetHeight, webglOutput.current.offsetHeight)
     } );
   }
   useEffect(()=>{
