@@ -21,7 +21,7 @@ export function DetailView(props: Props) {
     const parent = detailObjectSlt?.parent
     const grandparent = parent?.parent 
     if(! grandparent) return
-    const path = '/data/group/' + grandparent.name + '/' + parent.name + '/' + detailObjectSlt.name.slice(0, -3) + 'deltaY.dxf'
+    const path = '/data/group/' + grandparent.name + '/' + parent.name + '/' + detailObjectSlt.name.slice(0, -4) + '.dxf'
     // const path = '/data/group/83579eefadcaaf99d16749d76cc7673d/0001/1.deltaY(0.01).dxf'
     console.log(path) 
     const detailObject = await loader.load(path)

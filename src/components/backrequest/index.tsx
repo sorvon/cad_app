@@ -43,7 +43,7 @@ export const stp2stls = (tusid : string, userScene: UserScene) => {
   })
 }
 export const stl2stls = (tusid : string, userScene: UserScene) => {
-  const ws = new WebSocket('ws://localhost:8000/stp/stl2stls?tusid=' + tusid)
+  const ws = new WebSocket(`ws://localhost:8000/stp/stl2stls?tusid=${tusid}&args=${JSON.stringify({"groupType":userScene.groupType, "groupTaper":userScene.importTaper})}`)
   notification.info({
     key:tusid,
     message: (<><Spin/> 数据处理中</>),
@@ -183,7 +183,7 @@ export const batch8box = (tusid : string, userScene: UserScene, args: Object) =>
   }
 }
 
-export const fill8box = (tusid : string, userScene: UserScene, args: Object) => {
+export const fill8lines = (tusid : string, userScene: UserScene, args: Object) => {
   // const parent = userScene.root.getObjectByName(tusid)
   const parent = userScene.root.children[0]
   
@@ -207,7 +207,7 @@ export const fill8box = (tusid : string, userScene: UserScene, args: Object) => 
     onClose: ()=> {ws.close()},
   })
   ws.onmessage = (event)=>{
-    console.log(event.data)
+    // console.log(event.data)
     notification.info({
       key:tusid,
       message: (<><Spin/> 填充计算</>),

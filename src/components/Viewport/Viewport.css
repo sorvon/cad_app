@@ -1,15 +1,16 @@
 .Viewport{
   position: absolute;
   left: 0px;
-  right: 0px;
+  right: 300px;
   top: 0px;
   bottom: 0px;
+  border: solid 1px black;
   overflow: hidden;
 }
 
 .ViewHelper{
   position:absolute;
-  right: 0px;
+  right: 300px;
   bottom: 0px;
   height: 128px;
   width: 128px;

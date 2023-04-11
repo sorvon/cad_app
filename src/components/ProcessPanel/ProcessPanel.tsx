@@ -7,7 +7,7 @@ import * as tus from "tus-js-client";
 import { Space,Card, Button, UploadProps, Upload, Progress, Input, InputNumber, Menu, MenuProps, message, Modal, notification, Radio, Select, Spin, Tree } from 'antd';
 import { SettingFilled, CameraFilled } from '@ant-design/icons';
 import { red, volcano, orange, gold, yellow, lime, green, cyan, blue, geekblue, purple, magenta } from '@ant-design/colors';
-import {batch8box, downloadDXF, fill8box, stp2stls, stl2stls} from '../backrequest'
+import {batch8box, downloadDXF, fill8lines, stp2stls, stl2stls} from '../backrequest'
 import * as THREE from 'three';
 import { DirectoryTreeProps } from 'antd/es/tree';
 import { useLocalStorage } from 'usehooks-ts'
@@ -25,7 +25,6 @@ export function ProcessPanel({}: Props) {
   const [groupX, setGroupX] = useLocalStorage<number | null>("groupX", 40)
   const [groupY, setGroupY] = useLocalStorage<number | null>("groupY", 40)
   const [groupZ, setGroupZ] = useLocalStorage<number | null>("groupZ", 10)
-  const [groupTaper, setGroupTaper] = useLocalStorage<number | null>("groupTaper", 5)
   const [fillConfig, setFillConfig] = useState(false)
   const [fillInterval, setFillInterval] = useLocalStorage<string | number | null>("fillInterval", 0.01)
   const [fillType, setFillType] = useLocalStorage("fillType", "line")
@@ -157,6 +156,26 @@ export function ProcessPanel({}: Props) {
       console.log(options)
     },
   };
+  const handleChildrenShade = () => {
+    const children = userScene.root.getObjectByName(tusidRef.current)?.children
+    if(!children) return
+    children.forEach((child, index)=>{
+      child.traverse((obj) => {
+        if(obj instanceof THREE.Mesh){
+          obj.material = new THREE.MeshPhongMaterial({side:THREE.DoubleSide})
+          obj.material.color.set(colorList[index%colorList.length][9 - index % 8])              
+        }
+      })
+    })
+  }
+  const handleExportJson = () => {
+    const export_obj = userScene.root.getObjectByName(tusidRef.current)
+    const data =  new Blob([JSON.stringify(export_obj?.toJSON())], {type:'application/json'})
+    Modal.info({
+      title: "导出json",
+      content: (<a href={URL.createObjectURL(data)} download={tusidRef.current+'.json'}>点击下载</a>),
+    })
+  }
   useEffect(()=>{
     tusidRef.current = userScene.root.children[0]?.name;
   })
@@ -170,11 +189,11 @@ export function ProcessPanel({}: Props) {
       </div>
       
       <InputNumber 
-        addonBefore='倾角  :' 
+        addonBefore='拆分倾角  :' 
         addonAfter=' ° '
-        value={groupTaper}
+        value={userScene.importTaper}
         disabled={userScene.groupType===1}
-        onChange={(value) => {setGroupTaper(value)}}
+        onChange={(value) => {userScene.setImportTaper(value)}}
       />
       <div style={{textAlign:"center"}}>
         <Upload {...importProps}>
@@ -183,7 +202,7 @@ export function ProcessPanel({}: Props) {
       </div>
       
 
-      <Card title="分组" size='small'>
+      <Card  title="分组" size='small'>
       <InputNumber 
           addonBefore='扫场X' 
           addonAfter='mm'
@@ -202,11 +221,17 @@ export function ProcessPanel({}: Props) {
           value={groupZ}
           onChange={(value) => {setGroupZ(value)}}
         />
+        <InputNumber 
+          addonBefore='倾角' 
+          addonAfter='°'
+          value={userScene.groupTaper}
+          disabled={userScene.groupType===1}
+          onChange={(value) => {userScene.setGroupTaper(value)}}
+        />
         <p/>
         <p style={{textAlign:"center"}}>
-          <Button onClick={()=>{batch8box(tusidRef.current, userScene, {x: groupX, y: groupY, z:groupZ, taper:groupTaper, type:userScene.groupType})}} type="primary">分组</Button>
+          <Button onClick={()=>{batch8box(tusidRef.current, userScene, {x: groupX, y: groupY, z:groupZ, taper:userScene.groupTaper, type:userScene.groupType})}} type="primary">分组</Button>
         </p>
-        
       </Card>
 
       <Card title="填充" size='small'>
@@ -249,14 +274,14 @@ export function ProcessPanel({}: Props) {
         />
         <p/>
         <p style={{textAlign:"center"}}>
-          <Button type="primary">填充</Button>
+          <Button type="primary" onClick={()=>{fill8lines(tusidRef.current, userScene, {fillType, fillInterval, offsetX, offsetY, offsetZ, type:userScene.groupType})}}>填充</Button>
         </p>
       </Card>
       <Card style={{"textAlign":'center'}}>
         <Space  wrap>
-          <Button type="primary">下载</Button>
-          <Button type="primary">染色</Button>
-          <Button type="primary">导出json</Button>
+          <Button type="primary" onClick={()=>{downloadDXF(tusidRef.current, userScene)}}>下载</Button>
+          <Button type="primary" onClick={handleChildrenShade}>染色</Button>
+          <Button type="primary" onClick={handleExportJson}>导出json</Button>
         </Space>
       </Card>
     </div>

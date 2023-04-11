@@ -4,7 +4,7 @@ import { MoveObjectCommand } from '../../../command';
 import './Hierarchy.css'
 import { Dropdown, Input, InputNumber, Menu, MenuProps, message, Modal, notification, Radio, Select, Spin, Tree } from 'antd';
 import { red, volcano, orange, gold, yellow, lime, green, cyan, blue, geekblue, purple, magenta } from '@ant-design/colors';
-import {batch8box, downloadDXF, fill8box} from '../../backrequest'
+import {batch8box, downloadDXF, fill8lines} from '../../backrequest'
 import * as THREE from 'three';
 import { DirectoryTreeProps } from 'antd/es/tree';
 import { useLocalStorage } from 'usehooks-ts'
@@ -20,7 +20,6 @@ export function Hierarchy() {
   const [groupX, setGroupX] = useLocalStorage<number | null>("groupX", 40)
   const [groupY, setGroupY] = useLocalStorage<number | null>("groupY", 40)
   const [groupZ, setGroupZ] = useLocalStorage<number | null>("groupZ", 10)
-  const [groupTaper, setGroupTaper] = useLocalStorage<number | null>("groupTaper", 5)
   const [fillConfig, setFillConfig] = useState(false)
   const [fillInterval, setFillInterval] = useLocalStorage<string | number | null>("fillInterval", 0.01)
   const [fillType, setFillType] = useLocalStorage("fillType", "line")
@@ -256,7 +255,7 @@ export function Hierarchy() {
         open={groupConfig} 
         onCancel={() => setGroupConfig(false)}
         onOk={() => {
-          batch8box(tusidRef.current, userScene, {x: groupX, y: groupY, z:groupZ, taper:groupTaper, type:userScene.groupType})
+          batch8box(tusidRef.current, userScene, {x: groupX, y: groupY, z:groupZ, taper:userScene.groupTaper, type:userScene.groupType})
           setGroupConfig(false)
         }}
       >
@@ -282,9 +281,9 @@ export function Hierarchy() {
         <InputNumber 
           addonBefore='倾角  :' 
           addonAfter=' ° '
-          value={groupTaper}
+          value={userScene.groupTaper}
           disabled={userScene.groupType===1}
-          onChange={(value) => {setGroupTaper(value)}}
+          onChange={(value) => {userScene.setGroupTaper(value)}}
         />
         <Radio.Group onChange={(value)=>userScene.setGroupType(value.target.value)} value={userScene.groupType}>
           <Radio value={1}>三轴</Radio>
@@ -296,7 +295,7 @@ export function Hierarchy() {
         open={fillConfig} 
         onCancel={() => setFillConfig(false)}
         onOk={() => {
-          fill8box(tusidRef.current, userScene, {fillType, fillInterval, offsetX, offsetY, offsetZ, type:userScene.groupType})
+          fill8lines(tusidRef.current, userScene, {fillType, fillInterval, offsetX, offsetY, offsetZ, type:userScene.groupType})
           setFillConfig(false)
         }}
       >

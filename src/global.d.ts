@@ -9,4 +9,8 @@ type UserScene = {
   setUrl: Function
   groupType : number
   setGroupType : Function
+  groupTaper : number
+  setGroupTaper : Function,
+  importTaper : number,
+  setImportTaper : Function,
 }

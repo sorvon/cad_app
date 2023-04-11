@@ -24,7 +24,11 @@ export const UserSceneContext = createContext<UserScene>({
   url: '',
   setUrl: () => {},
   groupType : 1,
-  setGroupType : () => {}
+  setGroupType : () => {},
+  groupTaper : 20,
+  setGroupTaper : () => {},
+  importTaper : 20,
+  setImportTaper : () => {},
 })
 
 const root = new THREE.Group()
@@ -34,6 +38,8 @@ export default function App() {
   const [selected, setSelected] = useState(Array<string>())
   const [url, setUrl] = useState('192.168.91.128:1080')
   const [groupType, setGroupType] = useLocalStorage<number>("groupType", 1)
+  const [groupTaper, setGroupTaper] = useLocalStorage<number>("groupTaper", 25)
+  const [importTaper, setImportTaper] = useLocalStorage<number>("importTaper", 20)
   let selectedObject = useRef<THREE.Object3D | undefined>(undefined)
   // const root = useRef(new THREE.Group())
   // const camera = useRef(new THREE.OrthographicCamera())
@@ -69,7 +75,11 @@ export default function App() {
     url,
     setUrl,
     groupType,
-    setGroupType
+    setGroupType,
+    groupTaper,
+    setGroupTaper,
+    importTaper,
+    setImportTaper,
   }
 
   useEffect(()=>{
@@ -104,7 +114,6 @@ export default function App() {
   const siderStyle: React.CSSProperties = {
     textAlign: 'center',
     lineHeight: '50px',
-    color: '#fff',
     background: colorBgContainer,
   };
   

@@ -1,7 +1,6 @@
 import React, { RefObject, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls';
-// import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 
 import { AmbientLight, Mesh, PointLight } from 'three'
@@ -11,7 +10,7 @@ import { CombinedCamera } from "./CombinedCamera";
 import './Viewport.css'
 import { UserSceneContext } from '../../App';
 import { DetailView } from './DetailView';
-import { Dropdown, Menu, Modal, Input, MenuProps} from 'antd';
+import { Dropdown, Modal, Input, MenuProps} from 'antd';
 import { MenuClickEventHandler } from 'rc-menu/lib/interface';
 
 type Props = {}
@@ -23,7 +22,7 @@ const scene = new THREE.Scene()
 const transformControls = new TransformControls(camera, renderer.domElement)
 const orbitControls = new OrbitControls(camera, renderer.domElement)
 const boxHelper = new THREE.BoxHelper( new THREE.Mesh( new THREE.SphereGeometry(), new THREE.MeshBasicMaterial( { color: 0x00ff00 } ) ) )
-
+const obbBox = new THREE.LineSegments(undefined, new THREE.LineDashedMaterial( { color: 0xffaa00, dashSize: 3, gapSize: 1 } ) );
 export function Viewport({}: Props) {
   const userScene = useContext(UserSceneContext)
   const [modalSetting, setModalSetting] = useState(false)
@@ -108,6 +107,7 @@ export function Viewport({}: Props) {
     const frametime = 1 / FPS
     let delta = 0;
     scene.add(boxHelper) 
+    scene.add(obbBox)
     renderer.setAnimationLoop(()=>{
       orbitControls.update()
       delta += clock.getDelta();
@@ -153,14 +153,64 @@ export function Viewport({}: Props) {
     if(obj !== undefined){
       console.log(obj.userData)
       transformControls.attach(obj)
-      boxHelper.setFromObject(obj)
-      boxHelper.visible = true
+      if(userScene.groupType === 2 && obj.userData.length === 8) {
+        obbBox.visible = true;
+        boxHelper.visible = false
+        const geometry = new THREE.BufferGeometry();
+				const position = [];
+        position.push(
+          obj.userData[0]["x"], obj.userData[0]["y"], obj.userData[0]["z"],
+          obj.userData[1]["x"], obj.userData[1]["y"], obj.userData[1]["z"],
+
+          obj.userData[1]["x"], obj.userData[1]["y"], obj.userData[1]["z"], 
+          obj.userData[2]["x"], obj.userData[2]["y"], obj.userData[2]["z"],
+
+          obj.userData[2]["x"], obj.userData[2]["y"], obj.userData[2]["z"], 
+          obj.userData[3]["x"], obj.userData[3]["y"], obj.userData[3]["z"],
+
+          obj.userData[3]["x"], obj.userData[3]["y"], obj.userData[3]["z"], 
+          obj.userData[0]["x"], obj.userData[0]["y"], obj.userData[0]["z"],
+
+          obj.userData[4]["x"], obj.userData[4]["y"], obj.userData[4]["z"], 
+          obj.userData[5]["x"], obj.userData[5]["y"], obj.userData[5]["z"],
+
+          obj.userData[5]["x"], obj.userData[5]["y"], obj.userData[5]["z"], 
+          obj.userData[6]["x"], obj.userData[6]["y"], obj.userData[6]["z"],
+
+          obj.userData[6]["x"], obj.userData[6]["y"], obj.userData[6]["z"], 
+          obj.userData[7]["x"], obj.userData[7]["y"], obj.userData[7]["z"],
+
+          obj.userData[7]["x"], obj.userData[7]["y"], obj.userData[7]["z"], 
+          obj.userData[4]["x"], obj.userData[4]["y"], obj.userData[4]["z"],
+
+          obj.userData[0]["x"], obj.userData[0]["y"], obj.userData[0]["z"], 
+          obj.userData[5]["x"], obj.userData[5]["y"], obj.userData[5]["z"],
+
+          obj.userData[1]["x"], obj.userData[1]["y"], obj.userData[1]["z"], 
+          obj.userData[6]["x"], obj.userData[6]["y"], obj.userData[6]["z"],
+
+          obj.userData[2]["x"], obj.userData[2]["y"], obj.userData[2]["z"], 
+          obj.userData[7]["x"], obj.userData[7]["y"], obj.userData[7]["z"],
+
+          obj.userData[3]["x"], obj.userData[3]["y"], obj.userData[3]["z"], 
+          obj.userData[4]["x"], obj.userData[4]["y"], obj.userData[4]["z"],
+        )
+        geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( position, 3 ) );
+        obbBox.geometry = geometry;
+      }
+      else{
+        boxHelper.setFromObject(obj)
+        boxHelper.visible = true
+        obbBox.visible = false
+      }
     }
+    
     else{
       boxHelper.visible = false
+      obbBox.visible = false
       transformControls?.detach ()
     }
-  }, [userScene.root, userScene.selectedObject])
+  }, [userScene.groupType, userScene.root, userScene.selectedObject])
 
 
   let DownX = 0, DownY = 0, UpY = 0, UpX = 0
