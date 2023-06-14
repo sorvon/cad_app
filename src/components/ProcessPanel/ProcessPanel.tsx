@@ -1,39 +1,27 @@
 import React, { useEffect, useContext, useRef, useState } from 'react'
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
-import { STLLoader } from 'three/examples/jsm/loaders/STLLoader' ;
 import { UserSceneContext } from '../../App';
-import { MoveObjectCommand } from '../../command';
 import * as tus from "tus-js-client";
-import { Space,Card, Button, UploadProps, Upload, Progress, Input, InputNumber, Menu, MenuProps, message, Modal, notification, Radio, Select, Spin, Tree } from 'antd';
-import { SettingFilled, CameraFilled } from '@ant-design/icons';
+import { Space,Card, Button, UploadProps, Upload, Progress, InputNumber, Modal, notification, Radio, Select} from 'antd';
 import { red, volcano, orange, gold, yellow, lime, green, cyan, blue, geekblue, purple, magenta } from '@ant-design/colors';
 import {batch8box, downloadDXF, fill8lines, stp2stls, stl2stls} from '../backrequest'
 import * as THREE from 'three';
-import { DirectoryTreeProps } from 'antd/es/tree';
 import { useLocalStorage } from 'usehooks-ts'
 import './ProcessPanel.css'
-type Props = {}
 
-export function ProcessPanel({}: Props) {
+export function ProcessPanel() {
   const userScene = useContext(UserSceneContext)
-  const [expanded, setExpanded] = useState([userScene.root.uuid])
-  const hierarchyRef = useRef<HTMLDivElement>(null)
-  const treeRef = useRef<any>(null);
-  const [menuVisible, setMenuVisible] = useState(false)
-  const [menuDisable, setMenuDisable] = useState(false)
-  const [groupConfig, setGroupConfig] = useState(false)
   const [groupX, setGroupX] = useLocalStorage<number | null>("groupX", 40)
   const [groupY, setGroupY] = useLocalStorage<number | null>("groupY", 40)
   const [groupZ, setGroupZ] = useLocalStorage<number | null>("groupZ", 10)
-  const [fillConfig, setFillConfig] = useState(false)
   const [fillInterval, setFillInterval] = useLocalStorage<string | number | null>("fillInterval", 0.01)
   const [fillType, setFillType] = useLocalStorage("fillType", "line")
+  const [fillCompensation, setFillCompensation] = useLocalStorage<number | null>("fillCompensation", 0)
   const [offsetX, setOffsetX] = useLocalStorage<number | null>("offsetX", 0)
   const [offsetY, setOffsetY] = useLocalStorage<number | null>("offsetX", 0)
   const [offsetZ, setOffsetZ] = useLocalStorage<number | null>("offsetX", 0)
   const [colorList, setColorList] = useState([red, volcano, orange, gold, yellow, lime, green, cyan, blue, geekblue, purple, magenta ])
   const tusidRef = useRef('')
-  let groupConunt = 0
   let group = new THREE.Group()
   group.name = 'group' + group.id
   const importProps: UploadProps = {
@@ -44,7 +32,7 @@ export function ProcessPanel({}: Props) {
     //   authorization: 'authorization-text',
     //   "Access-Control-Allow-Origin": "*",
     // }, 
-    accept : '.stl,.obj,.stp,.step,.json',
+    accept : '.stl,.json',
     // multiple: true,
     maxCount: 1, 
     showUploadList: false,
@@ -70,7 +58,6 @@ export function ProcessPanel({}: Props) {
           return true
         }
         case 'obj':{
-          groupConunt ++
           reader.readAsText(file)
           reader.onload = (event) => {
             if(typeof event.target?.result === 'string'){
@@ -83,7 +70,6 @@ export function ProcessPanel({}: Props) {
           break;
         }
         case 'json':{
-          groupConunt ++
           reader.readAsText(file)
           reader.onload = (event) => {
             if(typeof event.target?.result === 'string'){
@@ -238,7 +224,7 @@ export function ProcessPanel({}: Props) {
         <Select value={fillType} onChange={setFillType} style={{ width: 120 }}
           options ={[
             {
-              value: 'line',
+              value: 'line_2',
               label: '直线'
             },
             {
@@ -252,7 +238,14 @@ export function ProcessPanel({}: Props) {
           addonBefore='填充间隔' 
           addonAfter='mm'
           value={fillInterval}
+          min={0.0001}
           onChange={(value) => {setFillInterval(value)}}
+        />
+        <InputNumber 
+          addonBefore='光斑补偿' 
+          addonAfter='mm'
+          value={fillCompensation}
+          onChange={(value) => {setFillCompensation(value)}}
         />
         <InputNumber 
           addonBefore='Offset X' 
@@ -274,7 +267,7 @@ export function ProcessPanel({}: Props) {
         />
         <p/>
         <p style={{textAlign:"center"}}>
-          <Button type="primary" onClick={()=>{fill8lines(tusidRef.current, userScene, {fillType, fillInterval, offsetX, offsetY, offsetZ, type:userScene.groupType})}}>填充</Button>
+          <Button type="primary" onClick={()=>{fill8lines(tusidRef.current, userScene, {fillType, fillInterval, fillCompensation, offsetX, offsetY, offsetZ, type:userScene.groupType})}}>填充</Button>
         </p>
       </Card>
       <Card style={{"textAlign":'center'}}>

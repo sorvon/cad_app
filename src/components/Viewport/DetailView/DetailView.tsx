@@ -13,7 +13,6 @@ const camera = new THREE.OrthographicCamera()
 export function DetailView(props: Props) {
   const webglOutput = useRef<HTMLDivElement | null>(null)
 
-
   const init = async () => {
     if(!props.detailObject) return
     const loader = new DXFLoader()
@@ -22,7 +21,6 @@ export function DetailView(props: Props) {
     const grandparent = parent?.parent 
     if(! grandparent) return
     const path = '/data/group/' + grandparent.name + '/' + parent.name + '/' + detailObjectSlt.name.slice(0, -4) + '.dxf'
-    // const path = '/data/group/83579eefadcaaf99d16749d76cc7673d/0001/1.deltaY(0.01).dxf'
     console.log(path) 
     const detailObject = await loader.load(path)
     if(!detailObject) return
@@ -55,7 +53,7 @@ export function DetailView(props: Props) {
     scene.add(detailObject)
 
     const axesHelper = new THREE.AxesHelper( 5000 );
-    scene.add( axesHelper );   
+    // scene.add( axesHelper );   
 
     const ambientLight = new AmbientLight(0xcccccc, 0.4)
     scene.add(ambientLight)
@@ -86,10 +84,10 @@ export function DetailView(props: Props) {
       camera.top = webglOutput.current.offsetHeight / 2
       camera.bottom = webglOutput.current.offsetHeight / -2
       camera.updateProjectionMatrix();
-      renderer.setSize( webglOutput.current.offsetHeight , webglOutput.current.offsetHeight );
+      renderer.setSize( webglOutput.current.offsetWidth , webglOutput.current.offsetHeight );
       // renderer.setSize( webglOutput.current.clientWidth , webglOutput.current.clientWidth );
       console.log(webglOutput.current.clientWidth, webglOutput.current.clientHeight)
-      console.log(webglOutput.current.offsetHeight, webglOutput.current.offsetHeight)
+      console.log(webglOutput.current.offsetWidth, webglOutput.current.offsetHeight)
     } );
   }
   useEffect(()=>{

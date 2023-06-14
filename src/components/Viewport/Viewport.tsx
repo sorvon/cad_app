@@ -153,7 +153,7 @@ export function Viewport({}: Props) {
     if(obj !== undefined){
       console.log(obj.userData)
       transformControls.attach(obj)
-      if(userScene.groupType === 2 && obj.userData.length === 8) {
+      if(obj.userData.length === 8) {
         obbBox.visible = true;
         boxHelper.visible = false
         const geometry = new THREE.BufferGeometry();
@@ -344,7 +344,7 @@ export function Viewport({}: Props) {
         onOk={() => setModalDetail(false)}
         width='80vw'
         destroyOnClose
-        bodyStyle={{height:'100vh', width:'100vw'}}
+        bodyStyle={{height:'80vh'}}
       >
         <DetailView detailObject={userScene.selectedObject} />
       </Modal>

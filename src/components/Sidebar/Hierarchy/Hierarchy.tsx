@@ -129,17 +129,9 @@ export function Hierarchy() {
       setMenuDisable(true)
       return
     }
-    // if(obj.name.length === 4){
-    //   if(!isNaN(parseInt(obj.name[0])) && !isNaN(parseInt(obj.name[1]))
-    //     &&!isNaN(parseInt(obj.name[2])) && !isNaN(parseInt(obj.name[3]))){
-    //       setMenuDisable(true)
-    //       return
-    //   }
-    // }
 
     setMenuDisable(false)
     tusidRef.current = obj.name
-    // console.log(obj.name.length)
   }
   const handleMenuClick : MenuProps['onClick']  = async (info) => {
     setMenuVisible(false)
@@ -229,7 +221,7 @@ export function Hierarchy() {
         menu={{items: menu, onClick: handleMenuClick}} 
         trigger={['contextMenu']} 
         open={menuVisible} 
-        onOpenChange={(visible)=>{setMenuVisible(visible)}}
+        onOpenChange={(visible)=>{setMenuVisible(false)}}
       >
         <Tree 
           ref={treeRef}
@@ -302,7 +294,7 @@ export function Hierarchy() {
         <Select value={fillType} onChange={setFillType} style={{ width: 120 }}
           options ={[
             {
-              value: 'line',
+              value: 'line_2',
               label: '直线'
             },
             {

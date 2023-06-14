@@ -30,7 +30,7 @@ function MainMenu({}: Props) {
     //   authorization: 'authorization-text',
     //   "Access-Control-Allow-Origin": "*",
     // }, 
-    accept : '.stl,.obj,.stp,.step,.json',
+    accept : '.stl,.json',
     // multiple: true,
     maxCount: 1, 
     showUploadList: false,

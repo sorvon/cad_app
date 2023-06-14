@@ -1,7 +1,5 @@
-import { message, Modal, notification, Progress, Spin } from "antd";
-import axios, { AxiosError } from "axios";
+import { Modal, notification, Progress, Spin } from "antd";
 import * as THREE from "three";
-import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader";
 
 export const stp2stls = (tusid : string, userScene: UserScene) => {
@@ -208,22 +206,31 @@ export const fill8lines = (tusid : string, userScene: UserScene, args: Object) =
   })
   ws.onmessage = (event)=>{
     // console.log(event.data)
-    notification.info({
-      key:tusid,
-      message: (<><Spin/> 填充计算</>),
-      description: (<Progress percent={Number(event.data)} />),
-      duration: null,
-      onClose: ()=> {ws.close()},
-    })
+    const data = JSON.parse(event.data)
+    if(Object.hasOwn(data, "progress")){
+      notification.info({
+        key:tusid,
+        message: (<><Spin/> 填充计算</>),
+        description: (<Progress percent={Number(data["progress"])} />),
+        duration: null,
+        onClose: ()=> {ws.close()},
+      })
+    }
+    
   }
   ws.onclose = (event) => {
-    console.log(event)
-    notification.success({
-      key:tusid,
-      message: (<>填充计算</>),
-      description: (<Progress percent={100} />),
-      onClose: ()=> {ws.close()},
-    })
+    if(event.code === 1000){
+      notification.success({
+        key: tusid,
+        message: (<>计算完成</>),
+      });
+    }
+    else{
+      notification.error({
+        key: tusid,
+        message: (<>错误</>),
+      });
+    }
   }
   
   ws.onerror = (event) => {
@@ -259,18 +266,8 @@ export const downloadDXF = (tusid: string, userScene: UserScene) => {
     const path = event.data
     Modal.info({
       title: "处理完成",
-      content: (<a href={path} download={getFormattedTime()+'.zip'}>点击下载</a>),
+      
+      content: (<a href={path} download={path.split( '/' ).pop()!.toLowerCase()}>点击下载</a>),
     })
   }
-}
-function getFormattedTime() {
-  var today = new Date();
-  var y = today.getFullYear();
-  // JavaScript months are 0-based.
-  var m = today.getMonth() + 1;
-  var d = today.getDate();
-  var h = today.getHours();
-  var mi = today.getMinutes();
-  var s = today.getSeconds();
-  return y +"-" + m +"-" + d +"-" + h +"-" + mi +"-" + s;
 }
